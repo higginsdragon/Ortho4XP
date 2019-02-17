@@ -76,7 +76,9 @@ def build_tile(tile):
         UI.vprint(3,e)
         UI.exit_message_and_bottom_line('')
         return 0
-    
+    if tile.use_night_texture:
+        UI.vprint(1,"-> Downloading ")
+        IMG.build_night_textures(tile)
     download_queue=queue.Queue()
     convert_queue=queue.Queue()
     build_dsf_thread=threading.Thread(target=DSF.build_dsf,args=[tile,download_queue])

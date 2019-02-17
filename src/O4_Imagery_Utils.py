@@ -8,6 +8,7 @@ import queue
 import random
 from math import ceil, log, tan, pi
 import numpy
+import xml.etree.ElementTree as ET
 from PIL import Image, ImageFilter, ImageEnhance,  ImageOps
 Image.MAX_IMAGE_PIXELS = 1000000000 # Not a decompression bomb attack!
 import O4_UI_Utils as UI
@@ -1116,6 +1117,42 @@ def build_geotiffs(tile,texture_attributes_list):
         UI.progress_bar(1,int(100*done/todo))
         if UI.red_flag: UI.exit_message_and_bottom_line() 
     UI.timings_and_bottom_line(timer)
+    return
+###############################################################################################################################
+
+###############################################################################################################################
+def build_night_textures(tile):
+    """Populate the night texture queue."""
+    (til_xmin,til_ymin)=GEO.wgs84_to_orthogrid(tile.lat+1,tile.lon,tile.night_texture_zl)
+    (til_xmax,til_ymax)=GEO.wgs84_to_orthogrid(tile.lat,tile.lon+1,tile.night_texture_zl)
+    for til_y_top in range(til_ymin,til_ymax,16):
+        for til_x_left in range(til_xmin,til_xmax,16):
+            build_one_night_texture(til_x_left, til_y_top, tile.night_texture_zl)
+    return
+###############################################################################################################################
+
+###############################################################################################################################
+def build_one_night_texture(til_x_left, til_y_top, zl):
+    """Take a job from the night texture build queue, and build a night texture."""
+    # Convert x, y into lat/lon
+    (lat_top,lon_left)=GEO.gtile_to_wgs84(til_x_left,til_y_top,zl)
+    (lat_bottom,lon_right)=GEO.gtile_to_wgs84(til_x_left+16,til_y_top+16,zl)
+    # Download the OSM data.
+    UI.vprint(1, "-> Getting OSM overpass data for bbox=(%f,%f,%f,%f)" % (lat_bottom, lon_left, lat_top, lon_right))
+    overpass_data=OSM.get_overpass_data('way["highway"="motorway"]', (lat_bottom,lon_left,lat_top,lon_right), None)
+    root=ET.fromstring(overpass_data)
+    # Build a dictionary of nodes
+    nodes={}
+    ways=[]
+    for node in root.findall('node'):
+        id=node.get('id')
+        lat=node.get('lat')
+        lon=node.get('lon')
+        nodes[id] = (lat,lon)
+    for way in root.findall('way'):
+        ways.append([nd.get('ref') for nd in way.findall('nd')])
+
+    time.sleep(5)
     return
 ###############################################################################################################################
 
