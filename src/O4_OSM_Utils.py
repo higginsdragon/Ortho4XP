@@ -10,13 +10,13 @@ import O4_UI_Utils as UI
 import O4_File_Names as FNAMES
 
 overpass_servers={
-        "DE":"http://overpass-api.de/api/interpreter",
-        "FR":"http://api.openstreetmap.fr/oapi/interpreter",
-        "KU":"https://overpass.kumi.systems/api/interpreter", 
-        "RU":"http://overpass.osm.rambler.ru/cgi/interpreter"
+        "DE": "http://overpass-api.de/api/interpreter",
+        "FR": "http://api.openstreetmap.fr/oapi/interpreter",
+        "KU": "https://overpass.kumi.systems/api/interpreter",
+        "RU": "http://overpass.osm.rambler.ru/cgi/interpreter"
         }
-overpass_server_choice="DE"
-max_osm_tentatives=8
+overpass_server_choice = "DE"
+max_osm_tentatives = 8
 
 ##############################################################################
 class OSM_layer():
@@ -358,12 +358,12 @@ def get_overpass_data(query,bbox,server_code=None):
         url=base_url+"?data=("+overpass_query+");(._;>>;);out meta;"
         UI.vprint(3,url)
         try:
-            r=s.get(url,timeout=60)
-            UI.vprint(3,"OSM response status :",r)
-            if '200' in str(r):
+            r=s.get(url, timeout=60)
+            UI.vprint(3, "OSM response status :",str(r.status_code))
+            if r.status_code == 200:
                 if b"</osm>" not in r.content[-10:] and b"</OSM>" not in r.content[-10:]:
                     UI.vprint(1,"        OSM server",true_server_code,"sent a corrupted answer (no closing </osm> tag in answer), new tentative in",2**tentative,"sec...")
-                elif len(r.content)<=1000 and b"error" in r.content: 
+                elif len(r.content)<=1000 and b"error" in r.content:
                     UI.vprint(1,"        OSM server",true_server_code,"sent us an error code for the data (data too big ?), new tentative in",2**tentative,"sec...")
                 else:
                     break
@@ -375,7 +375,7 @@ def get_overpass_data(query,bbox,server_code=None):
             return 0
         if UI.red_flag: return 0
         time.sleep(2**tentative)
-        tentative+=1           
+        tentative+=1
     return r.content
 ##############################################################################
 
