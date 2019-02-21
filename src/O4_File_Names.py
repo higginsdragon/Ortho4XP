@@ -154,7 +154,9 @@ def SRTM_1sec(lat, lon):
 def legacy_mask(m_til_x_left,m_til_y_top):
     return str(m_til_y_top)+'_'+str(m_til_x_left)+'.png'
 def mask_file(til_x_left,til_y_top,zoomlevel,provider_code):
-    return str(til_y_top)+"_"+str(til_x_left)+"_ZL"+str(zoomlevel)+".png"   
+    return str(til_y_top)+"_"+str(til_x_left)+"_ZL"+str(zoomlevel)+".png"
+def night_file(til_x_left,til_y_top,zoomlevel):
+    return str(til_y_top)+"_"+str(til_x_left)+"_NM_ZL"+str(zoomlevel)+".png"
 ##############################################################################
 
 ##############################################################################

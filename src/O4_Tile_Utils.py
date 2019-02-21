@@ -77,7 +77,7 @@ def build_tile(tile):
         UI.exit_message_and_bottom_line('')
         return 0
     if tile.use_night_texture:
-        UI.vprint(1,"-> Downloading ")
+        UI.vprint(1,"-> Building night textures ")
         IMG.build_night_textures(tile)
     download_queue=queue.Queue()
     convert_queue=queue.Queue()

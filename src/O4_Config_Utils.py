@@ -76,7 +76,7 @@ cfg_vars={
     'overlay_lod':         {'type':float,'default':25000,'hint':'Distance until which overlay imageries (that is orthophotos over water) are drawn. Lower distances have a positive impact on frame rate and VRAM usage, and IFR flyers will probably need a higher value than VFR ones.'},
     'use_decal_on_terrain':{'type':bool,'default':False,'hint':'Terrain files for all but water triangles will contain the maquify_1_green_key.dcl decal directive. The effect is noticeable at very low altitude and helps to overcome the orthophoto blur at such levels. Can be slightly distracting at higher altitude.'},
     'use_night_texture':   {'type':bool,'default':False,'hint':'Enable a lit night texture'},
-    'night_texture_zl':    {'type':int,'default':15,'values':(14,15,16,17,18),'hint':'Zoom level for lit night texture'},
+    'night_texture_zl':    {'type':int,'default':15,'values':(12,13,14,15,16,17,18),'hint':'Zoom level for lit night texture'},
     # Other
     'custom_dem':          {'type':str,'default':'','hint':'Path to an elevation data file to be used instead of the default Viewfinderpanoramas.org ones (J. de Ferranti). The raster must be in geopgraphical coordinates (EPSG:4326) but the extent need not match the tile boundary (requires Gdal). Regions of the tile that are not covered by the raster are mapped to zero altitude (can be useful for high resolution data over islands in particular).     '},
     'fill_nodata':         {'type':bool,'default':True,'hint':'When set, the no_data values in the raster will be filled by a nearest neighbour algorithm. If unset, they are turned into zero (can be useful for rasters with no_data over the whole oceanic part or partial LIDAR data).'}
