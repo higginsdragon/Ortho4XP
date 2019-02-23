@@ -399,42 +399,78 @@ def OSM_queries_to_OSM_layer(queries, osm_layer, lat, lon, tags_of_interest=None
     return OSM_query_to_OSM_layer(queries, bbox, osm_layer, tags_of_interest, server_code, cached_data_filename)
 
 
-def get_overpass_data(query,bbox,server_code=None):
-    tentative=1
+def get_overpass_data(query, bbox, server_code=None):
+    """
+    Directly calls the OSM server to get the requested data, returning the raw response.
+
+    :param query: the OSM queries as a raw string or tuple
+    :param bbox: tuple lat/long bounding box, e.g. (41, -88, 42, -87)
+    :param server_code: The server code to use, or 'random'
+    :return: request content or 0/False
+    """
+    tentative = 1
+    server_keys = overpass_servers.keys()
+    true_server_code = overpass_server_choice  # defining this here in case a bad server code is passed in
+
     while True:
-        s=requests.Session()
-        if not server_code:
-           true_server_code = random.choice(list(overpass_servers.keys())) if overpass_server_choice=='random' else overpass_server_choice
-        base_url=overpass_servers[true_server_code]
-        if isinstance(query,str):
-            overpass_query=query+str(bbox)+";"
-        else: # query is a tuple 
-            overpass_query=''.join([x+str(bbox)+";" for x in query])
-        url=base_url+"?data=("+overpass_query+");(._;>>;);out meta;"
-        UI.vprint(3,url)
+        s = requests.Session()
+
+        if 'random' in [server_code, true_server_code]:
+            true_server_code = random.choice(list(server_keys))
+        elif server_code:
+            if server_code in server_keys:
+                true_server_code = server_code
+            else:
+                UI.vprint(1, "        Bad server code, defaulting to", true_server_code)
+
+        base_url = overpass_servers[true_server_code]
+
+        if isinstance(query, str):
+            overpass_query = query + str(bbox) + ";"
+        else:  # query is a tuple
+            overpass_query = ''.join([x + str(bbox) + ";" for x in query])
+
+        url = base_url + "?data=(" + overpass_query + ");(._;>>;);out meta;"
+        UI.vprint(3, url)
+
         try:
-            r=s.get(url, timeout=60)
-            UI.vprint(3, "OSM response status :",str(r.status_code))
+            r = s.get(url, timeout=60)
+            UI.vprint(3, "OSM response status :", str(r.status_code))
             if r.status_code == 200:
                 if b"</osm>" not in r.content[-10:] and b"</OSM>" not in r.content[-10:]:
-                    UI.vprint(1,"        OSM server",true_server_code,"sent a corrupted answer (no closing </osm> tag in answer), new tentative in",2**tentative,"sec...")
+                    UI.vprint(1, "        OSM server", true_server_code,
+                              "sent a corrupted answer (no closing </osm> tag in answer), new tentative in",
+                              2**tentative, "sec...")
                 elif len(r.content)<=1000 and b"error" in r.content:
-                    UI.vprint(1,"        OSM server",true_server_code,"sent us an error code for the data (data too big ?), new tentative in",2**tentative,"sec...")
+                    UI.vprint(1, "        OSM server", true_server_code,
+                              "sent us an error code for the data (data too big ?), new tentative in",
+                              2**tentative, "sec...")
                 else:
                     break
             else:
-                UI.vprint(1,"        OSM server",true_server_code,"rejected our query, new tentative in",2**tentative,"sec...")
-        except:
-            UI.vprint(1,"        OSM server",true_server_code,"was too busy, new tentative in",2**tentative,"sec...")
-        if tentative>=max_osm_tentatives:
-            return 0
-        if UI.red_flag: return 0
-        time.sleep(2**tentative)
-        tentative+=1
-    return r.content
-##############################################################################
+                UI.vprint(1, "        OSM server", true_server_code,
+                          "rejected our query, new tentative in", 2**tentative, "sec...")
 
-##############################################################################
+        except requests.Timeout:
+            UI.vprint(1, "        OSM server", true_server_code,
+                      "was too busy, new tentative in", 2**tentative, "sec...")
+        except requests.exceptions.RequestException:
+            UI.vprint(1, "        OSM server", true_server_code,
+                      "raised an error and cannot connect. Try a different server.")
+            return 0
+
+        if tentative >= max_osm_tentatives:
+            return 0
+
+        if UI.red_flag:
+            return 0
+
+        time.sleep(2**tentative)
+        tentative += 1
+
+    return r.content
+
+
 def OSM_to_MultiLineString(osm_layer,lat,lon,tags_for_exclusion=set(),filter=None):
     multiline=[]
     multiline_reject=[]

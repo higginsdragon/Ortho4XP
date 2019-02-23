@@ -326,8 +326,7 @@ class TestOsmQueriesToOsmLayer(unittest.TestCase):
 
         self.assertFalse(result)
 
-# def OSM_query_to_OSM_layer(query,bbox,osm_layer,tags_of_interest=[],server_code=None,cached_file_name=''):
-# 'way["highway"="motorway"]'
+
 class TestOsmQueryToOsmLayer(unittest.TestCase):
 
     @mock.patch('bz2.open')
@@ -373,7 +372,7 @@ class TestOsmQueryToOsmLayer(unittest.TestCase):
         layer = OSM.OSM_layer()
         bbox = (41, -88, 42, -87)
 
-        result = OSM.OSM_query_to_OSM_layer(queries,bbox, layer, tags_of_interest)
+        result = OSM.OSM_query_to_OSM_layer(queries, bbox, layer, tags_of_interest)
 
         self.assertTrue(result)
 
@@ -389,11 +388,11 @@ class TestOsmQueryToOsmLayer(unittest.TestCase):
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     @mock.patch('O4_UI_Utils.vprint')
     def test_osm_query_to_osm_layer_file_fail_should_get_from_server(self,
-                                                                       vprint_mock,
-                                                                       session_mock,
-                                                                       file_mock,
-                                                                       os_mock,
-                                                                       bz_mock):
+                                                                     vprint_mock,
+                                                                     session_mock,
+                                                                     file_mock,
+                                                                     os_mock,
+                                                                     bz_mock):
         vprint_mock.vprint = None
         file_mock.return_value = os.path.join(MOCKS_DIR, 'cached_aeroways.osm.bz2')
         os_mock.return_value = True
@@ -408,8 +407,9 @@ class TestOsmQueryToOsmLayer(unittest.TestCase):
         layer = OSM.OSM_layer()
         # We don't actually want to attempt to write anything for this test.
         layer.write_to_file = mock.Mock(return_value=1)
+        bbox = (41, -88, 42, -87)
 
-        result = OSM.OSM_query_to_OSM_layer(queries, (41, -88, 42, -87), layer, tags_of_interest, cached_file_name='airports')
+        result = OSM.OSM_query_to_OSM_layer(queries, bbox, layer, tags_of_interest, cached_file_name='airports')
 
         self.assertTrue(result)
 
@@ -490,6 +490,37 @@ class TestGetOverpassData(unittest.TestCase):
 
         self.assertEqual('osm', osm_parsed.tag.lower())
         self.assertEqual(session_mock.return_value.content, raw_xml)
+
+    @mock.patch('O4_OSM_Utils.requests.Session.get')
+    @mock.patch('O4_UI_Utils.vprint')
+    def test_get_overpass_with_bad_server_code(self, vprint_mock, session_mock):
+        vprint_mock.vprint = None
+        session_mock.return_value.status_code = 200
+        osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
+        session_mock.return_value.content = osm_file.read().encode()
+        osm_file.close()
+
+        raw_xml = OSM.get_overpass_data(('node["aeroway"]', 'way["aeroway"]', 'rel["aeroway"]'),
+                                        (41, -88, 42, -87),
+                                        '8Xa')
+        osm_parsed = ET.fromstring(raw_xml)
+
+        self.assertEqual('osm', osm_parsed.tag.lower())
+        self.assertEqual(session_mock.return_value.content, raw_xml)
+
+    @mock.patch('O4_OSM_Utils.requests.Session.get')
+    @mock.patch('O4_UI_Utils.vprint')
+    def test_get_overpass_with_server_error(self, vprint_mock, session_mock):
+        vprint_mock.vprint = None
+        session_mock.return_value.status_code = 404
+        session_mock.return_value.content = ''
+        OSM.max_osm_tentatives = 1  # Otherwise this single test will take over 8 minutes
+
+        raw_xml = OSM.get_overpass_data(('node["aeroway"]', 'way["aeroway"]', 'rel["aeroway"]'),
+                                        (41, -88, 42, -87),
+                                        None)
+
+        self.assertFalse(raw_xml)
 
 
 if __name__ == '__main__':
