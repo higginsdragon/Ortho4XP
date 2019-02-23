@@ -44,7 +44,7 @@ class TestOSMLayer(unittest.TestCase):
 
         self.maxDiff = None
 
-        self.assertEqual(1, result)
+        self.assertTrue(result)
 
         # Do some sampling to make sure data is consistent across tests, which it should be.
         # nodes
@@ -89,8 +89,8 @@ class TestOSMLayer(unittest.TestCase):
 
         result = layer.update_dicosm(file_path_string)
 
-        # Quicker test because we did a more thorough one above.
-        self.assertEqual(1, result)
+        # Smaller test because we did a more thorough one above.
+        self.assertTrue(result)
         self.assertEqual(10208, len(layer.dicosmn))
         self.assertEqual(1216, len(layer.dicosmw))
         self.assertEqual(2, len(layer.dicosmr))
@@ -105,7 +105,7 @@ class TestOSMLayer(unittest.TestCase):
         result = layer.update_dicosm(file_path_string)
 
         # Quicker test because we did a more thorough one above.
-        self.assertEqual(1, result)
+        self.assertTrue(result)
         self.assertEqual(10208, len(layer.dicosmn))
         self.assertEqual(1216, len(layer.dicosmw))
         self.assertEqual(2, len(layer.dicosmr))
@@ -125,7 +125,7 @@ class TestOSMLayer(unittest.TestCase):
 
         result = layer.update_dicosm(file_path_string)
 
-        self.assertEqual(0, result)
+        self.assertFalse(result)
 
     def test_write_to_file(self):
         layer = OSM.OSM_layer()
@@ -199,7 +199,134 @@ class TestOSMLayer(unittest.TestCase):
         os.remove(temp_file_path)
 
 
+class TestOsmQueriesToOsmLayer(unittest.TestCase):
+
+    @mock.patch('bz2.open')
+    @mock.patch('os.path.isfile')
+    @mock.patch('O4_File_Names.osm_old_cached')
+    @mock.patch('O4_UI_Utils.vprint')
+    def test_osm_queries_to_osm_layer_from_file(self, vprint_mock, file_mock, os_mock, bz_mock):
+        # This seems complex--it's not too much. Need to trigger a bz2.open, but just need to give it some valid XML.
+        vprint_mock.vprint = None
+        file_mock.return_value = os.path.join(MOCKS_DIR, 'cached_aeroways.osm.bz2')
+        os_mock.return_value = True
+        bz_mock.return_value = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'), 'rt', encoding='utf-8')
+
+        queries = [('node["aeroway"]', 'way["aeroway"]', 'rel["aeroway"]')]
+        layer = OSM.OSM_layer()
+        tags_of_interest = ['all']
+
+        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest, cached_suffix='airports')
+
+        self.assertTrue(result)
+
+        self.assertEqual(10208, len(layer.dicosmn))
+        self.assertEqual(1216, len(layer.dicosmw))
+        self.assertEqual(2, len(layer.dicosmr))
+        self.assertEqual(1212, len(layer.dicosmtags['w']))
+        self.assertEqual(2, len(layer.dicosmtags['r']))
+
+        bz_mock.return_value.close()
+
+    @mock.patch('O4_OSM_Utils.requests.Session.get')
+    @mock.patch('O4_UI_Utils.vprint')
+    def test_osm_queries_to_osm_layer_from_server(self, vprint_mock, session_mock):
+        vprint_mock.vprint = None
+        session_mock.return_value.status_code = 200
+        osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
+        session_mock.return_value.content = osm_file.read().encode()
+        osm_file.close()
+
+        queries = [('node["aeroway"]', 'way["aeroway"]', 'rel["aeroway"]')]
+        layer = OSM.OSM_layer()
+        tags_of_interest = ['all']
+
+        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest)
+
+        self.assertTrue(result)
+
+        self.assertEqual(10208, len(layer.dicosmn))
+        self.assertEqual(1216, len(layer.dicosmw))
+        self.assertEqual(2, len(layer.dicosmr))
+        self.assertEqual(1212, len(layer.dicosmtags['w']))
+        self.assertEqual(2, len(layer.dicosmtags['r']))
+
+    @mock.patch('bz2.open')
+    @mock.patch('os.path.isfile')
+    @mock.patch('O4_File_Names.osm_old_cached')
+    @mock.patch('O4_OSM_Utils.requests.Session.get')
+    @mock.patch('O4_UI_Utils.vprint')
+    def test_osm_queries_to_osm_layer_file_fail_should_get_from_server(self,
+                                                                       vprint_mock,
+                                                                       session_mock,
+                                                                       file_mock,
+                                                                       os_mock,
+                                                                       bz_mock):
+        vprint_mock.vprint = None
+        file_mock.return_value = os.path.join(MOCKS_DIR, 'cached_aeroways.osm.bz2')
+        os_mock.return_value = True
+        bz_mock.return_value = open(os.path.join(MOCKS_DIR, 'osm_malformed.xml'), 'rt', encoding='utf-8')
+        session_mock.return_value.status_code = 200
+        osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
+        session_mock.return_value.content = osm_file.read().encode()
+        osm_file.close()
+
+        queries = [('node["aeroway"]', 'way["aeroway"]', 'rel["aeroway"]')]
+        tags_of_interest = ['all']
+        layer = OSM.OSM_layer()
+        # We don't actually want to attempt to write anything for this test.
+        layer.write_to_file = mock.Mock(return_value=1)
+
+        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest, cached_suffix='airports')
+
+        self.assertTrue(result)
+
+        self.assertEqual(10208, len(layer.dicosmn))
+        self.assertEqual(1216, len(layer.dicosmw))
+        self.assertEqual(2, len(layer.dicosmr))
+        self.assertEqual(1212, len(layer.dicosmtags['w']))
+        self.assertEqual(2, len(layer.dicosmtags['r']))
+
+        bz_mock.return_value.close()
+
+    @mock.patch('O4_OSM_Utils.UI')
+    @mock.patch('O4_OSM_Utils.requests.Session.get')
+    @mock.patch('O4_UI_Utils.vprint')
+    def test_osm_queries_to_osm_layer_should_fail_if_ui_red_flag(self, vprint_mock, session_mock, ui_mock):
+        vprint_mock.vprint = None
+        ui_mock.red_flag = True
+        session_mock.return_value.status_code = 200
+        osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
+        session_mock.return_value.content = osm_file.read().encode()
+        osm_file.close()
+
+        queries = [('node["aeroway"]', 'way["aeroway"]', 'rel["aeroway"]')]
+        tags_of_interest = ['all']
+        layer = OSM.OSM_layer()
+
+        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest)
+
+        self.assertFalse(result)
+
+    @mock.patch('O4_OSM_Utils.requests.Session.get')
+    @mock.patch('O4_UI_Utils.vprint')
+    def test_osm_queries_to_osm_layer_should_fail_if_no_response(self, vprint_mock, session_mock):
+        vprint_mock.vprint = None
+        session_mock.return_value.status_code = 404
+        session_mock.return_value.content = ''
+        OSM.max_osm_tentatives = 1  # Otherwise this single test will take over 8 minutes
+
+        queries = [('node["aeroway"]', 'way["aeroway"]', 'rel["aeroway"]')]
+        tags_of_interest = ['all']
+        layer = OSM.OSM_layer()
+
+        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest)
+
+        self.assertFalse(result)
+
+
 class TestGetOverpassData(unittest.TestCase):
+
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     def test_get_overpass_data_with_string(self, session_mock):
         session_mock.return_value.status_code = 200

@@ -84,7 +84,7 @@ class OSM_layer:
         try:
             osm_parsed = ET.fromstring(osm_input)
         except ET.ParseError:
-            UI.vprint(1, "    Error parsing OSM data, probably corrupted or malformed. Skipping.")
+            UI.vprint(1, "    Error parsing OSM data, probably corrupted or malformed.")
             return 0
 
         def process_tags(parent, parent_id, parent_type):
@@ -299,52 +299,85 @@ def xml_indent(elem, level=0):
     return 1
 
 
-def OSM_queries_to_OSM_layer(queries,osm_layer,lat,lon,tags_of_interest=[],server_code=None,cached_suffix=''):
-    # this one is a bit complicated by a few checks of existing cached data which had different filenames
-    # is versions prior to 1.30
-    target_tags={'n':[],'w':[],'r':[]}
-    input_tags={'n':[],'w':[],'r':[]}
-    for query in queries:
-        for tag in [query] if isinstance(query,str) else query:
-            items=tag.split('"')
-            osm_type=items[0][0]
-            try: 
-                target_tags[osm_type].append((items[1],items[3]))
-                input_tags[osm_type].append((items[1],items[3]))
-            except: 
-                target_tags[osm_type].append((items[1],''))
-                input_tags[osm_type].append((items[1],''))
-            for tag in tags_of_interest:
-                if isinstance(tag,str):
-                    if (tag,'') not in target_tags[osm_type]: target_tags[osm_type].append((tag,''))
-                else:
-                    if tag not in target_tags[osm_type]:target_tags[osm_type].append(tag)
-    cached_data_filename=FNAMES.osm_cached(lat, lon, cached_suffix)
-    if cached_suffix and os.path.isfile(cached_data_filename):
-        UI.vprint(1,"    * Recycling OSM data from",cached_data_filename)
-        return osm_layer.update_dicosm(cached_data_filename,input_tags,target_tags)
-    for query in queries:
-        # look first for cached data (old scheme)
-        if isinstance(query,str):
-            old_cached_data_filename=FNAMES.osm_old_cached(lat, lon, query)
-            if os.path.isfile(old_cached_data_filename):
-                UI.vprint(1,"    * Recycling OSM data for",query)
-                osm_layer.update_dicosm(old_cached_data_filename,input_tags,target_tags)
-                continue
-        UI.vprint(1,"    * Downloading OSM data for",query)        
-        response=get_overpass_data(query,(lat,lon,lat+1,lon+1),server_code)
-        if UI.red_flag: return 0
-        if not response: 
-           UI.logprint("No valid answer for",query,"after",max_osm_tentatives,", skipping it.") 
-           UI.vprint(1,"      No valid answer after",max_osm_tentatives,", skipping it.")
-           return 0
-        osm_layer.update_dicosm(response,input_tags,target_tags)
-    if cached_suffix: 
-        osm_layer.write_to_file(cached_data_filename)
-    return 1
-##############################################################################
+def OSM_queries_to_OSM_layer(queries, osm_layer, lat, lon, tags_of_interest=None, server_code=None, cached_suffix=''):
+    """
+    Takes queries for a tile and then gets the OSM data either by local file if cached, or OSM server if new request.
+    Also checks for legacy pre 1.30 cached files.
 
-##############################################################################
+    :param queries: array of different OSM queries, e.g. ['way["highway"="motorway"]']
+    :param osm_layer: the OSMLayer object to add to
+    :param lat: latitude of the tile
+    :param lon: logitude of the tile
+    :param tags_of_interest: an array of tags to filter by, e.g. ["bridge","tunnel"]
+    :param server_code: OSM server code to use, e.g. 'DE'
+    :param cached_suffix: the suffix to use for the cached filename, e.g. 'airports' becomes +00-000_airports.osm.bz2
+    :return: 1/True or 0/False
+    """
+    target_tags = {'n': [], 'w': [], 'r': []}
+    input_tags = {'n': [], 'w': [], 'r': []}
+
+    # This is done to avoid mutable objects in default parameters. See: http://effbot.org/zone/default-values.htm
+    if tags_of_interest is None:
+        tags_of_interest = []
+
+    for query in queries:
+        for value in [query] if isinstance(query, str) else query:
+            items = value.split('"')
+            osm_type = items[0][0]
+
+            try:
+                target_tags[osm_type].append((items[1], items[3]))
+                input_tags[osm_type].append((items[1], items[3]))
+            except IndexError:
+                target_tags[osm_type].append((items[1], ''))
+                input_tags[osm_type].append((items[1], ''))
+
+            for tag in tags_of_interest:
+                if isinstance(tag, str):
+                    if (tag, '') not in target_tags[osm_type]:
+                        target_tags[osm_type].append((tag, ''))
+                else:  # it's already a tuple
+                    if tag not in target_tags[osm_type]:
+                        target_tags[osm_type].append(tag)
+
+    cached_data_filename = FNAMES.osm_cached(lat, lon, cached_suffix)
+
+    if cached_suffix and os.path.isfile(cached_data_filename):
+        UI.vprint(1,"    * Recycling OSM data from", cached_data_filename)
+        # If file is bad, gracefully continue to download new data.
+        if osm_layer.update_dicosm(cached_data_filename, input_tags, target_tags):
+            return 1
+
+    for query in queries:
+        # this one is a bit complicated by a few checks of existing cached data which had different filenames
+        # is versions prior to 1.30
+        # look first for cached data (old scheme) -- legacy
+        if isinstance(query, str):
+            old_cached_data_filename = FNAMES.osm_old_cached(lat, lon, query)
+            if os.path.isfile(old_cached_data_filename):
+                UI.vprint(1, "    * Recycling OSM data for", query)
+                osm_layer.update_dicosm(old_cached_data_filename, input_tags, target_tags)
+                continue
+
+        UI.vprint(1, "    * Downloading OSM data for", query)
+        response = get_overpass_data(query, (lat, lon, lat + 1, lon + 1), server_code)
+
+        if UI.red_flag:
+            return 0
+
+        if not response:
+            UI.logprint("No valid answer for", query, "after", max_osm_tentatives, ", skipping it.")
+            UI.vprint(1, "      No valid answer after", max_osm_tentatives, ", skipping it.")
+            return 0
+
+        osm_layer.update_dicosm(response, input_tags, target_tags)
+
+    if cached_suffix:
+        osm_layer.write_to_file(cached_data_filename)
+
+    return 1
+
+
 def OSM_query_to_OSM_layer(query,bbox,osm_layer,tags_of_interest=[],server_code=None,cached_file_name=''):
     # this one is simpler and does not depend on the notion of tile
     target_tags={'n':[],'w':[],'r':[]}
