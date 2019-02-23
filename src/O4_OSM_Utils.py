@@ -7,7 +7,7 @@ import numpy
 from shapely import geometry, ops
 import O4_UI_Utils as UI
 import O4_File_Names as FNAMES
-from xml.etree import ElementTree
+import xml.etree.ElementTree as ET
 
 overpass_servers={
         "DE": "http://overpass-api.de/api/interpreter",
@@ -24,7 +24,7 @@ class OSM_layer:
     def __init__(self):
         self.dicosmn = {}            # keys are ints (ids) and values are tuple of (lat,lon)
         self.dicosmn_reverse = {}    # reverese of the previous one
-        self.dicosmw={}
+        self.dicosmw = {}
         self.next_node_id = -1
         self.next_way_id = -1
         self.next_rel_id = -1
@@ -33,8 +33,8 @@ class OSM_layer:
         # ids of objects directly queried, not of child or
         # parent objects pulled indirectly by queries. Since
         # osm ids are only unique per object type we need one for each:
-        self.dicosmfirst = {'n': set(), 'w': set(), 'r': set()}
-        self.dicosmtags = {'n': {}, 'w': {}, 'r': {}}
+        self.dicosmfirst = {'n': set(), 'w': set(), 'r': set()}     # tag ids
+        self.dicosmtags = {'n': {}, 'w': {}, 'r': {}}               # tag contents
         self.dicosm = [self.dicosmn,
                        self.dicosmw,
                        self.dicosmr,
@@ -80,8 +80,8 @@ class OSM_layer:
                 return 0
 
         try:
-            osm_parsed = ElementTree.fromstring(osm_input)
-        except ElementTree.ParseError:
+            osm_parsed = ET.fromstring(osm_input)
+        except ET.ParseError:
             UI.vprint(1, "    Error parsing OSM data, probably corrupted or malformed. Skipping.")
             return 0
 
@@ -204,48 +204,88 @@ class OSM_layer:
                   str(len(self.dicosmfirst['r']) - initrels) + " new relation(s).")
         return 1
 
+    def write_to_file(self, filename):
+        """
+        Writes the OSMLayer object to a file.
 
-    def write_to_file(self,filename):
+        :param filename: full path and file name
+        :return: 1/True or 0/False
+        """
+        osm = ET.Element('osm', attrib={'generator': 'Ortho4XP', 'version': '0.6'})
+
+        # nodes
+        for node_id, (lonp, latp) in self.dicosmn.items():
+            node = ET.SubElement(osm, 'node', attrib={'id': str(node_id),
+                                                      'lat': str('{:.7f}'.format(latp)),
+                                                      'lon': str('{:.7f}'.format(lonp)),
+                                                      'version': '1'})
+            if node_id in self.dicosmfirst['n']:  # tags!
+                for tag in self.dicosmtags['n'][node_id]:
+                    tag_value = self.dicosmtags['n'][node_id][tag]
+                    ET.SubElement(node, 'tag', attrib={'k': tag, 'v': tag_value})
+
+        # ways
+        for way_id in self.dicosmw.keys():
+            way = ET.SubElement(osm, 'way', attrib={'id': str(way_id), 'version': '1'})
+            for node_id in self.dicosmw[way_id]:
+                ET.SubElement(way, 'nd', attrib={'ref': str(node_id)})
+            if way_id in self.dicosmtags['w']:
+                for tag in self.dicosmtags['w'][way_id]:
+                    tag_value = self.dicosmtags['w'][way_id][tag]
+                    ET.SubElement(way, 'tag', attrib={'k': tag, 'v': tag_value})
+
+        # relations
+        for relation_id in self.dicosmr.keys():
+            relation = ET.SubElement(osm, 'relation', attrib={'id': str(relation_id), 'version': '1'})
+            for way_id in self.dicosmr[relation_id]['outer']:
+                ET.SubElement(relation, 'member', attrib={'type': 'way', 'ref': str(way_id), 'role': 'outer'})
+            for way_id in self.dicosmr[relation_id]['inner']:
+                ET.SubElement(relation, 'member', attrib={'type': 'way', 'ref': str(way_id), 'role': 'inner'})
+            if relation_id in self.dicosmtags['r']:
+                for tag in self.dicosmtags['r'][relation_id]:
+                    tag_value = self.dicosmtags['r'][relation_id][tag]
+                    ET.SubElement(relation, 'tag', attrib={'k': tag, 'v': tag_value})
+
+        xml_indent(osm)
+        tree = ET.ElementTree(osm)
+
         try:
-            if filename[-4:]=='.bz2':
-                fout=bz2.open(filename,'wt',encoding="utf-8")
+            if filename[-4:] == '.bz2':
+                fout = bz2.open(filename, 'wb')
+                tree.write(fout, encoding='UTF-8', xml_declaration=True)
+                fout.close()
             else:
-                fout=open(filename,'w',encoding="utf-8")
-        except:
-            UI.vprint(1,"    Could not open",filename,"for writing.")
+                tree.write(filename, encoding='UTF-8', xml_declaration=True)
+        except OSError:
+            UI.vprint(1, "    Could not open", filename, "for writing.")
             return 0
-        fout.write('<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="Ortho4XP">\n')
-        if not len(self.dicosmfirst['n']):
-            for nodeid,(lonp,latp) in self.dicosmn.items():
-                fout.write('  <node id="'+str(nodeid)+'" lat="'+'{:.7f}'.format(latp)+'" lon="'+'{:.7f}'.format(lonp)+'" version="1"/>\n')
-        else:
-            for nodeid,(lonp,latp) in self.dicosmn.items():
-                if nodeid not in self.dicosmtags['n']:
-                    fout.write('  <node id="'+str(nodeid)+'" lat="'+'{:.7f}'.format(latp)+'" lon="'+'{:.7f}'.format(lonp)+'" version="1"/>\n')
-                else:
-                    fout.write('  <node id="'+str(nodeid)+'" lat="'+'{:.7f}'.format(latp)+'" lon="'+'{:.7f}'.format(lonp)+'" version="1">\n')
-                    for tag in self.dicosmtags['n'][nodeid]:
-                        fout.write('    <tag k="'+tag+'" v="'+self.dicosmtags['n'][nodeid][tag]+'"/>\n')
-                    fout.write('  </node>\n')
-        for wayid in tuple(self.dicosmfirst['w'])+tuple(set(self.dicosmw).difference(self.dicosmfirst['w'])):
-            fout.write('  <way id="'+str(wayid)+'" version="1">\n')
-            for nodeid in self.dicosmw[wayid]:
-                fout.write('    <nd ref="'+str(nodeid)+'"/>\n')
-            for tag in self.dicosmtags['w'][wayid] if wayid in self.dicosmtags['w'] else []:
-                fout.write('    <tag k="'+tag+'" v="'+self.dicosmtags['w'][wayid][tag]+'"/>\n')
-            fout.write('  </way>\n')
-        for relid in tuple(self.dicosmfirst['r'])+tuple(set(self.dicosmr).difference(self.dicosmfirst['r'])):
-            fout.write('  <relation id="'+str(relid)+'" version="1">\n')
-            for wayid in self.dicosmr[relid]['outer']:
-                fout.write('    <member type="way" ref="'+str(wayid)+'" role="outer"/>\n')
-            for wayid in self.dicosmr[relid]['inner']:
-                fout.write('    <member type="way" ref="'+str(wayid)+'" role="inner"/>\n')
-            for tag in self.dicosmtags['r'][relid] if relid in self.dicosmtags['r'] else []:
-                fout.write('    <tag k="'+tag+'" v="'+self.dicosmtags['r'][relid][tag]+'"/>\n')
-            fout.write('  </relation>\n')
-        fout.write('</osm>')
-        fout.close()    
+
         return 1
+
+
+def xml_indent(elem, level=0):
+    """
+    Because ElementTree doesn't do newlines or indents, this will add them to the elements so the file is pretty.
+
+    :param elem: pass the root element here
+    :param level: the indent level
+    :return: 
+    """
+    i = '\n' + level * '  '
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + '  '
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            xml_indent(elem, level + 1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
+
+    return 1
 
 
 def OSM_queries_to_OSM_layer(queries,osm_layer,lat,lon,tags_of_interest=[],server_code=None,cached_suffix=''):
