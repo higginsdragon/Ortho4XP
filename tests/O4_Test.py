@@ -5,6 +5,7 @@ import sys
 
 TESTS_DIR = os.path.dirname(__file__)
 TEMP_DIR = os.path.join(TESTS_DIR, 'tmp')
+MOCKS_DIR = os.path.join(TESTS_DIR, 'mocks')
 
 sys.path.insert(0, os.path.join(TESTS_DIR, '../src/'))
 

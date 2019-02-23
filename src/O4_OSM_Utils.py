@@ -30,6 +30,8 @@ class OSM_layer:
         self.next_rel_id = -1
         # rels already sorted out and containing nodeids rather than wayids
         self.dicosmr = {}
+        # original rels containing wayids only, not sorted and/or reversed -- for use in relation tracking
+        self.dicosmrorig = {}
         # ids of objects directly queried, not of child or
         # parent objects pulled indirectly by queries. Since
         # osm ids are only unique per object type we need one for each:
@@ -164,6 +166,7 @@ class OSM_layer:
                 self.next_rel_id -= 1
                 osm_id = true_osm_id
                 self.dicosmr[osm_id] = {'outer': [], 'inner': []}
+                self.dicosmrorig[osm_id] = {'outer': [], 'inner': []}
 
                 if not input_tags:
                     self.dicosmfirst['r'].add(osm_id)
@@ -187,9 +190,17 @@ class OSM_layer:
 
                     true_node_ids = self.dicosmw[way_id]
 
+                    # hold onto referenced way ids for saving
+                    self.dicosmrorig[osm_id][role].append(way_id)
+
+                    # to keep consistency with the old function
+                    # might be unnecessary depending on what and how it's used
+                    if len(self.dicosmr[osm_id][role]) == 0:
+                        self.dicosmr[osm_id][role].append([])
+
                     for true_node_id in true_node_ids:
                         if true_node_id != dupe_id_check:
-                            self.dicosmr[osm_id][role].append(true_node_id)
+                            self.dicosmr[osm_id][role][0].append(true_node_id)
 
                         dupe_id_check = true_node_id
 
@@ -237,9 +248,9 @@ class OSM_layer:
         # relations
         for relation_id in self.dicosmr.keys():
             relation = ET.SubElement(osm, 'relation', attrib={'id': str(relation_id), 'version': '1'})
-            for way_id in self.dicosmr[relation_id]['outer']:
+            for way_id in self.dicosmrorig[relation_id]['outer']:
                 ET.SubElement(relation, 'member', attrib={'type': 'way', 'ref': str(way_id), 'role': 'outer'})
-            for way_id in self.dicosmr[relation_id]['inner']:
+            for way_id in self.dicosmrorig[relation_id]['inner']:
                 ET.SubElement(relation, 'member', attrib={'type': 'way', 'ref': str(way_id), 'role': 'inner'})
             if relation_id in self.dicosmtags['r']:
                 for tag in self.dicosmtags['r'][relation_id]:

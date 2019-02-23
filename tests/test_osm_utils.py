@@ -9,6 +9,7 @@ import O4_OSM_Utils as OSM
 
 TESTS_DIR = O4_Test.TESTS_DIR
 TEMP_DIR = O4_Test.TEMP_DIR
+MOCKS_DIR = O4_Test.MOCKS_DIR
 
 
 class TestOSMLayer(unittest.TestCase):
@@ -35,7 +36,7 @@ class TestOSMLayer(unittest.TestCase):
 
     def test_update_dicosm(self):
         layer = OSM.OSM_layer()
-        osm_file = open(os.path.join(TESTS_DIR, 'mocks/osm_get_aeroways.xml'))
+        osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
         encoded_data = osm_file.read().encode()
         osm_file.close()
 
@@ -59,17 +60,17 @@ class TestOSMLayer(unittest.TestCase):
         self.assertEqual([-6152, -6151, -6146, -6157, -6152], layer.dicosmw[-922])
         # relations
         self.assertEqual(2, len(layer.dicosmr))
-        self.assertEqual(50, len(layer.dicosmr[-1]['outer']))
-        self.assertEqual([-5138, -5140, -5122, -5121, -5128, -5123, -5117, -5094, -5100, -5097, -5088, -5058,
+        self.assertEqual(50, len(layer.dicosmr[-1]['outer'][0]))
+        self.assertEqual([[-5138, -5140, -5122, -5121, -5128, -5123, -5117, -5094, -5100, -5097, -5088, -5058,
                           -5061, -5066, -5065, -5057, -5056, -5067, -5068, -5059, -5060, -5021, -5023, -5015,
                           -5014, -5020, -5019, -5031, -5026, -5029, -5032, -5049, -5041, -5046, -5053, -5073,
                           -5085, -5078, -5082, -5087, -5108, -5101, -5105, -5112, -5116, -5124, -5126, -5143,
-                          -5142, -5138],
+                          -5142, -5138]],
                          layer.dicosmr[-1]['outer'])
-        self.assertEqual(26, len(layer.dicosmr[-2]['outer']))
-        self.assertEqual([-5138, -5140, -5371, -9611, -506, -5370, -9607, -9606, -9612, -9613, -9608, -9599,
+        self.assertEqual(26, len(layer.dicosmr[-2]['outer'][0]))
+        self.assertEqual([[-5138, -5140, -5371, -9611, -506, -5370, -9607, -9606, -9612, -9613, -9608, -9599,
                           -4152, -9600, -9609, -9601, -9602, -4153, -9603, -9604, -9610, -9605, -5148, -5143,
-                          -5142, -5138],
+                          -5142, -5138]],
                          layer.dicosmr[-2]['outer'])
         # tags
         self.assertEqual(318, len(layer.dicosmtags['n']))
@@ -84,7 +85,7 @@ class TestOSMLayer(unittest.TestCase):
 
     def test_update_dicosm_with_uncompressed_file(self):
         layer = OSM.OSM_layer()
-        file_path_string = os.path.join(TESTS_DIR, 'mocks/osm_get_aeroways.xml')
+        file_path_string = os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml')
 
         result = layer.update_dicosm(file_path_string)
 
@@ -99,7 +100,7 @@ class TestOSMLayer(unittest.TestCase):
 
     def test_update_dicosm_with_bz2_file(self):
         layer = OSM.OSM_layer()
-        file_path_string = os.path.join(TESTS_DIR, 'mocks/osm_get_aeroways.xml.bz2')
+        file_path_string = os.path.join(MOCKS_DIR, 'cached_aeroways.osm.bz2')
 
         result = layer.update_dicosm(file_path_string)
 
@@ -108,7 +109,7 @@ class TestOSMLayer(unittest.TestCase):
         self.assertEqual(10208, len(layer.dicosmn))
         self.assertEqual(1216, len(layer.dicosmw))
         self.assertEqual(2, len(layer.dicosmr))
-        self.assertEqual(318, len(layer.dicosmtags['n']))
+        self.assertEqual(0, len(layer.dicosmtags['n']))     # node tags aren't saved currently
         self.assertEqual(1212, len(layer.dicosmtags['w']))
         self.assertEqual(2, len(layer.dicosmtags['r']))
 
@@ -120,7 +121,7 @@ class TestOSMLayer(unittest.TestCase):
         vprint_mock.vprint = None
 
         layer = OSM.OSM_layer()
-        file_path_string = os.path.join(TESTS_DIR, 'mocks/osm_malformed.xml')
+        file_path_string = os.path.join(MOCKS_DIR, 'osm_malformed.xml')
 
         result = layer.update_dicosm(file_path_string)
 
@@ -128,7 +129,7 @@ class TestOSMLayer(unittest.TestCase):
 
     def test_write_to_file(self):
         layer = OSM.OSM_layer()
-        file_path_string = os.path.join(TESTS_DIR, 'mocks/osm_get_aeroways.xml')
+        file_path_string = os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml')
         temp_file_path = os.path.join(TEMP_DIR, "write_test.osm")
 
         layer.update_dicosm(file_path_string)
@@ -150,16 +151,23 @@ class TestOSMLayer(unittest.TestCase):
 
         file_parsed = ET.fromstring(file_read)
 
+        # These are to make sure it saved the proper amount of data
         self.assertEqual(10208, len(file_parsed.findall('node')))
         self.assertEqual(1216, len(file_parsed.findall('way')))
         self.assertEqual(2, len(file_parsed.findall('relation')))
+        members = file_parsed.findall('relation/member')
+        self.assertEqual(4, len(members))
+        self.assertEqual(-784, int(members[0].get('ref')))
+        self.assertEqual(-1117, int(members[1].get('ref')))
+        self.assertEqual(-1116, int(members[2].get('ref')))
+        self.assertEqual(-1118, int(members[3].get('ref')))
 
         # cleanup
         os.remove(temp_file_path)
 
     def test_write_to_bz2_file(self):
         layer = OSM.OSM_layer()
-        file_path_string = os.path.join(TESTS_DIR, 'mocks/osm_get_aeroways.xml')
+        file_path_string = os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml')
         temp_file_path = os.path.join(TEMP_DIR, "write_test.osm.bz2")
 
         layer.update_dicosm(file_path_string)
@@ -181,9 +189,11 @@ class TestOSMLayer(unittest.TestCase):
 
         file_parsed = ET.fromstring(file_read)
 
+        # These are to make sure it saved the proper amount of data
         self.assertEqual(10208, len(file_parsed.findall('node')))
         self.assertEqual(1216, len(file_parsed.findall('way')))
         self.assertEqual(2, len(file_parsed.findall('relation')))
+        self.assertEqual(4, len(file_parsed.findall('relation/member')))
 
         # cleanup
         os.remove(temp_file_path)
@@ -193,7 +203,7 @@ class TestGetOverpassData(unittest.TestCase):
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     def test_get_overpass_data_with_string(self, session_mock):
         session_mock.return_value.status_code = 200
-        osm_file = open(os.path.join(TESTS_DIR, 'mocks/osm_get_motorway.xml'))
+        osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_motorway.xml'))
         session_mock.return_value.content = osm_file.read().encode()
         osm_file.close()
 
@@ -206,7 +216,7 @@ class TestGetOverpassData(unittest.TestCase):
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     def test_get_overpass_data_with_tuple(self, session_mock):
         session_mock.return_value.status_code = 200
-        osm_file = open(os.path.join(TESTS_DIR, 'mocks/osm_get_aeroways.xml'))
+        osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
         session_mock.return_value.content = osm_file.read().encode()
         osm_file.close()
 

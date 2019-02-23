@@ -8,6 +8,7 @@ import O4_OSM_Utils as OSM
 
 TESTS_DIR = O4_Test.TESTS_DIR
 TEMP_DIR = O4_Test.TEMP_DIR
+MOCKS_DIR = O4_Test.MOCKS_DIR
 
 
 class TestBuildCurvTolWeightMap(unittest.TestCase):
@@ -15,7 +16,7 @@ class TestBuildCurvTolWeightMap(unittest.TestCase):
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     def test_get_overpass_data_with_string(self, session_mock):
         session_mock.return_value.status_code = 200
-        osm_data = open(os.path.join(TESTS_DIR, 'mocks/osm_get_motorway.xml'))
+        osm_data = open(os.path.join(MOCKS_DIR, 'osm_get_motorway.xml'))
         session_mock.return_value.content = osm_data.read().encode()
         osm_data.close()
 
@@ -28,7 +29,7 @@ class TestBuildCurvTolWeightMap(unittest.TestCase):
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     def test_get_overpass_data_with_tuple(self, session_mock):
         session_mock.return_value.status_code = 200
-        osm_data = open(os.path.join(TESTS_DIR, 'mocks/osm_get_aeroways.xml'))
+        osm_data = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
         session_mock.return_value.content = osm_data.read().encode()
         osm_data.close()
 
