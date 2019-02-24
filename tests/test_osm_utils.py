@@ -241,7 +241,7 @@ class TestOsmQueriesToOsmLayer(unittest.TestCase):
         tags_of_interest = ['all']
         layer = OSM.OSM_layer()
 
-        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest)
+        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest, cached_suffix='airports')
 
         self.assertTrue(result)
 
@@ -289,40 +289,48 @@ class TestOsmQueriesToOsmLayer(unittest.TestCase):
 
         bz_mock.return_value.close()
 
+    @mock.patch('os.path.isfile')
     @mock.patch('O4_OSM_Utils.UI')
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     @mock.patch('O4_UI_Utils.vprint')
-    def test_osm_queries_to_osm_layer_should_fail_if_ui_red_flag(self, vprint_mock, session_mock, ui_mock):
+    def test_osm_queries_to_osm_layer_should_fail_if_ui_red_flag(self, vprint_mock, session_mock, ui_mock, path_mock):
         vprint_mock.vprint = None
         ui_mock.red_flag = True
         session_mock.return_value.status_code = 200
         osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
         session_mock.return_value.content = osm_file.read().encode()
         osm_file.close()
+        path_mock.return_value = False  # We want it to try fetching.
 
         queries = [('node["aeroway"]', 'way["aeroway"]', 'rel["aeroway"]')]
         tags_of_interest = ['all']
         layer = OSM.OSM_layer()
 
-        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest)
+        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest, cached_suffix='airports')
 
         self.assertFalse(result)
 
+    @mock.patch('os.path.isfile')
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     @mock.patch('O4_UI_Utils.vprint')
     @mock.patch('O4_UI_Utils.lvprint')
-    def test_osm_queries_to_osm_layer_should_fail_if_no_response(self, lvprint_mock, vprint_mock, session_mock):
+    def test_osm_queries_to_osm_layer_should_fail_if_no_response(self,
+                                                                 lvprint_mock,
+                                                                 vprint_mock,
+                                                                 session_mock,
+                                                                 path_mock):
         lvprint_mock.lvprint = None
         vprint_mock.vprint = None
         session_mock.return_value.status_code = 404
         session_mock.return_value.content = ''
         OSM.max_osm_tentatives = 1  # Otherwise this single test will take over 8 minutes
+        path_mock.return_value = False  # We want it to try fetching.
 
         queries = [('node["aeroway"]', 'way["aeroway"]', 'rel["aeroway"]')]
         tags_of_interest = ['all']
         layer = OSM.OSM_layer()
 
-        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest)
+        result = OSM.OSM_queries_to_OSM_layer(queries, layer, 41, -88, tags_of_interest, cached_suffix='airports')
 
         self.assertFalse(result)
 
