@@ -33,6 +33,8 @@ class TestOSMLayer(unittest.TestCase):
                           layer.dicosmfirst,
                           layer.dicosmtags],
                          layer.dicosm)
+        self.assertEqual({'n': [], 'w': [], 'r': []}, layer.input_tags)
+        self.assertEqual({'n': [], 'w': [], 'r': []}, layer.target_tags)
 
     def test_update_dicosm(self):
         layer = OSM.OSM_layer()
@@ -82,6 +84,35 @@ class TestOSMLayer(unittest.TestCase):
         self.assertEqual(2, len(layer.dicosmtags['r']))
         self.assertEqual({'aeroway': 'terminal', 'building': 'yes', 'name': 'L Stinger', 'type': 'multipolygon',
                           'wikidata': 'Q56045889'}, layer.dicosmtags['r'][-2])
+
+    def test_update_dicosm_water(self):
+        layer = OSM.OSM_layer()
+        file_names = ['water_rel', 'water_way']
+        target_tags = {'n': [], 'w': [('natural', 'water'), ('name', '')], 'r': [('natural', 'water'), ('name', '')]}
+        input_tags = {'n': [], 'w': [('natural', 'water')], 'r': [('natural', 'water')]}
+
+        for n in file_names:
+            osm_file_name = os.path.join(MOCKS_DIR, 'osm_40113W_' + n + '_raw.xml')
+            layer.update_dicosm(osm_file_name, input_tags, target_tags)
+
+        self.assertEqual(18, len(layer.dicosmr))
+        self.assertEqual(254, len(layer.dicosmr[-1]['outer'][0]))
+        self.assertEqual(99, len(layer.dicosmr[-17]['outer'][0]))
+        self.assertEqual([-4764, -4765, -4766, -4767, -4768, -4769, -4770, -4771, -4772, -4773, -4774, -4775, -4776,
+                          -4777, -4778, -4779, -4780, -4781, -4782, -4783, -4784, -4785, -4786, -4787, -4788, -4789,
+                          -4790, -4791, -4792, -4793, -7820, -4764],
+                         layer.dicosmr[-16]['outer'][0])
+        self.assertEqual([-3403, -3404, -3405, -3406, -3407, -3408, -3409, -3410, -3411, -3412, -3413, -3403],
+                         layer.dicosmr[-16]['inner'][0])
+
+    def test_update_dicosm_bad_relation(self):
+        layer = OSM.OSM_layer()
+        osm_file_name = os.path.join(MOCKS_DIR, 'osm_bad_relation.xml')
+        layer.update_dicosm(osm_file_name)
+
+        self.assertEqual(2, len(layer.dicosmr))
+        self.assertEqual([-1, -2, -3, -4, -1], layer.dicosmr[-1]['outer'][0])
+        self.assertEqual([-13, -14, -15, -17, -13], layer.dicosmr[-2]['outer'][0])
 
     def test_update_dicosm_with_uncompressed_file(self):
         layer = OSM.OSM_layer()
@@ -161,6 +192,39 @@ class TestOSMLayer(unittest.TestCase):
         self.assertEqual(-1117, int(members[1].get('ref')))
         self.assertEqual(-1116, int(members[2].get('ref')))
         self.assertEqual(-1118, int(members[3].get('ref')))
+
+        # cleanup
+        os.remove(temp_file_path)
+
+    def test_write_to_file_and_read_back(self):
+        save_layer = OSM.OSM_layer()
+        file_path_string = os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml')
+        temp_file_path = os.path.join(TEMP_DIR, "write_test.osm")
+
+        save_layer.update_dicosm(file_path_string)
+
+        self.assertEqual(10208, len(save_layer.dicosmn))
+        self.assertEqual(1216, len(save_layer.dicosmw))
+        self.assertEqual(2, len(save_layer.dicosmr))
+        self.assertEqual(318, len(save_layer.dicosmtags['n']))
+        self.assertEqual(1212, len(save_layer.dicosmtags['w']))
+        self.assertEqual(2, len(save_layer.dicosmtags['r']))
+
+        save_layer.write_to_file(temp_file_path)
+
+        layer = OSM.OSM_layer()
+        file_path_string = os.path.join(temp_file_path)
+
+        result = layer.update_dicosm(file_path_string)
+
+        # Quicker test because we did a more thorough one above.
+        self.assertTrue(result)
+        self.assertEqual(10208, len(layer.dicosmn))
+        self.assertEqual(1216, len(layer.dicosmw))
+        self.assertEqual(2, len(layer.dicosmr))
+        self.assertEqual(0, len(layer.dicosmtags['n']))     # node tags aren't saved currently
+        self.assertEqual(1212, len(layer.dicosmtags['w']))
+        self.assertEqual(2, len(layer.dicosmtags['r']))
 
         # cleanup
         os.remove(temp_file_path)

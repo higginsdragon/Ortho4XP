@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="Overpass API 0.7.55.5 2ca3f387">
+<note>Intentionally bad data to cause an error in Ortho4XP</note>
+<meta osm_base="2019-02-21T17:47:02Z"/>
+
+  <node id="1" lat="41.9799885" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="2" lat="41.9799886" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="3" lat="41.9799887" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="4" lat="41.9799888" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="5" lat="41.9799889" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="6" lat="41.9799895" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="7" lat="41.9799896" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="8" lat="41.9799897" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="9" lat="41.9799898" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="10" lat="41.9799899" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="11" lat="41.9799812" lon="-87.9312289" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="12" lat="41.9799811" lon="-87.9312229" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="13" lat="41.9799411" lon="-87.9312239" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="14" lat="41.9799511" lon="-87.9312249" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="15" lat="41.9799611" lon="-87.9312259" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="16" lat="41.9799711" lon="-87.9312269" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  <node id="17" lat="41.9799211" lon="-87.9312279" version="1" timestamp="2019-02-06T23:25:28Z" changeset="66979177" uid="18480" user="mock"/>
+  
+  <way id="1" version="1" timestamp="2019-02-06T23:25:29Z" changeset="66979177" uid="18480" user="nickvet419">
+    <nd ref="1"/>
+    <nd ref="2"/>
+    <nd ref="3"/>
+    <nd ref="4"/>
+    <nd ref="1"/>
+    <tag k="aeroway" v="apron"/>
+  </way>
+   <way id="2" version="1" timestamp="2019-02-06T23:25:29Z" changeset="66979177" uid="18480" user="nickvet419">
+    <nd ref="5"/>
+    <nd ref="6"/>
+    <nd ref="7"/>
+    <tag k="aeroway" v="apron"/>
+  </way>
+   <way id="3" version="1" timestamp="2019-02-06T23:25:29Z" changeset="66979177" uid="18480" user="nickvet419">
+    <nd ref="8"/>
+    <nd ref="9"/>
+    <nd ref="5"/>
+    <tag k="aeroway" v="apron"/>
+  </way>
+   <way id="4" version="1" timestamp="2019-02-06T23:25:29Z" changeset="66979177" uid="18480" user="nickvet419">
+    <nd ref="11"/>
+    <nd ref="12"/>
+    <nd ref="5"/>
+    <tag k="aeroway" v="apron"/>
+  </way>
+   <way id="5" version="1" timestamp="2019-02-06T23:25:29Z" changeset="66979177" uid="18480" user="nickvet419">
+    <nd ref="13"/>
+    <nd ref="14"/>
+    <nd ref="15"/>
+    <tag k="aeroway" v="apron"/>
+  </way>
+   <way id="6" version="1" timestamp="2019-02-06T23:25:29Z" changeset="66979177" uid="18480" user="nickvet419">
+    <nd ref="15"/>
+    <nd ref="17"/>
+    <nd ref="13"/>
+    <tag k="aeroway" v="apron"/>
+  </way>
+  <relation id="1" version="2" timestamp="2019-01-05T18:19:29Z" changeset="66054004" uid="8132215" user="MSG17">
+    <member type="way" ref="1" role="outer"/>
+  </relation>
+  <relation id="2" version="2" timestamp="2019-01-05T18:19:29Z" changeset="66054004" uid="8132215" user="MSG17">
+    <member type="way" ref="2" role="outer"/>
+    <member type="way" ref="3" role="outer"/>
+    <member type="way" ref="4" role="outer"/>
+  </relation>
+  <relation id="3" version="2" timestamp="2019-01-05T18:19:29Z" changeset="66054004" uid="8132215" user="MSG17">
+    <member type="way" ref="5" role="outer"/>
+    <member type="way" ref="6" role="outer"/>
+  </relation>
+</osm>

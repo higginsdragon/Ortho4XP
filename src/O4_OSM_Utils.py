@@ -23,14 +23,14 @@ class OSM_layer:
 
     def __init__(self):
         self.dicosmn = {}            # keys are ints (ids) and values are tuple of (lat,lon)
-        self.dicosmn_reverse = {}    # reverese of the previous one
+        self.dicosmn_reverse = {}    # reverse of the previous one
         self.dicosmw = {}
         self.next_node_id = -1
         self.next_way_id = -1
         self.next_rel_id = -1
-        # rels already sorted out and containing nodeids rather than wayids
+        # relations already sorted out and containing node ids rather than way ids
         self.dicosmr = {}
-        # original rels containing wayids only, not sorted and/or reversed -- for use in relation tracking
+        # original relations containing way ids only, not sorted and/or reversed -- for use in relation tracking
         self.dicosmrorig = {}
         # ids of objects directly queried, not of child or
         # parent objects pulled indirectly by queries. Since
@@ -42,6 +42,8 @@ class OSM_layer:
                        self.dicosmr,
                        self.dicosmfirst,
                        self.dicosmtags]
+        self.target_tags = {'n': [], 'w': [], 'r': []}
+        self.input_tags = {'n': [], 'w': [], 'r': []}
 
     def update_dicosm(self, osm_input, input_tags=None, target_tags=None):
         """
@@ -62,6 +64,8 @@ class OSM_layer:
         initrels = len(self.dicosmfirst['r'])
         node_id_dict = {}
         way_id_dict = {}
+        self.input_tags = input_tags
+        self.target_tags = target_tags
 
         if isinstance(osm_input, str):
             # pointer to a cached filename
@@ -87,35 +91,6 @@ class OSM_layer:
             UI.vprint(1, "    Error parsing OSM data, probably corrupted or malformed.")
             return 0
 
-        def process_tags(parent, parent_id, parent_type):
-            """
-            There are multiple attribute types which require getting nested tags, so keeping the function DRY and
-            within scope.
-
-            :param parent: (object) the parsed XML tag object
-            :param parent_id: (int) the ID of the parent tag
-            :param parent_type: (str) the type of the parent
-            :return: 1/True
-            """
-            # Maybe move this into the class in the future for testing purposes.
-            for tag in parent.findall('tag'):
-                # Do we need to catch that tag?
-                k = tag.get('k')
-                v = tag.get('v')
-                if (not input_tags) or (('all', '') in target_tags[parent_type])\
-                    or ((k, '') in target_tags[parent_type])\
-                        or ((k, v) in target_tags[parent_type]):
-                    if osm_id not in self.dicosmtags[parent_type]:
-                        self.dicosmtags[parent_type][parent_id] = {k: v}
-                    else:
-                        self.dicosmtags[parent_type][parent_id][k] = v
-
-                    # If so, do we need to declare this osm_id as a first catch, not one only brought with as a child
-                    if input_tags and (((k, '') in input_tags[parent_type]) or ((k, v) in input_tags[parent_type])):
-                        self.dicosmfirst[parent_type].add(parent_id)
-
-            return 1
-
         # nodes
         for node in osm_parsed.findall('node'):
             osm_id = node.get('id')
@@ -134,7 +109,7 @@ class OSM_layer:
                 self.next_node_id -= 1
 
             # tags
-            process_tags(node, osm_id, 'n')
+            self.process_tags(node, osm_id, 'n')
 
         # ways
         for way in osm_parsed.findall('way'):
@@ -152,16 +127,15 @@ class OSM_layer:
                 self.dicosmw[osm_id].append(node_id_dict[nd.get('ref')])
 
             # tags
-            process_tags(way, osm_id, 'w')
+            self.process_tags(way, osm_id, 'w')
 
         # relations
-        # for airports, we don't want any relations with anything other than 2 inner or outer roles
         for relation in osm_parsed.findall('relation'):
             outer_roles = relation.findall("member[@type='way'][@role='outer']")
             inner_roles = relation.findall("member[@type='way'][@role='inner']")
-            osm_id = relation.get('id')
+            members = outer_roles + inner_roles
 
-            if len(outer_roles) == 2 or len(inner_roles) == 2:  # we continue
+            if members:
                 true_osm_id = self.next_rel_id
                 self.next_rel_id -= 1
                 osm_id = true_osm_id
@@ -172,47 +146,112 @@ class OSM_layer:
                     self.dicosmfirst['r'].add(osm_id)
 
                 # members
-                if len(outer_roles) == 2:
-                    members = outer_roles
-                    role = 'outer'
-                else:  # must be inner roles
-                    members = inner_roles
-                    role = 'inner'
-
-                dupe_id_check = 0
+                non_contiguous_ways = {'outer': {}, 'inner': {}}
 
                 for member in members:
                     orig_way_id = member.get('ref')
+                    role = member.get('role')
+
                     try:
                         way_id = way_id_dict[orig_way_id]
                     except KeyError:  # no entry in way_id dictionary
                         continue
 
-                    true_node_ids = self.dicosmw[way_id]
-
-                    # hold onto referenced way ids for saving
                     self.dicosmrorig[osm_id][role].append(way_id)
+                    start_point = self.dicosmw[way_id][0]
+                    end_point = self.dicosmw[way_id][-1]
 
-                    # to keep consistency with the old function
-                    # might be unnecessary depending on what and how it's used
-                    if len(self.dicosmr[osm_id][role]) == 0:
-                        self.dicosmr[osm_id][role].append([])
+                    if start_point == end_point:  # nice closed path
+                        self.dicosmr[osm_id][role].append(self.dicosmw[way_id])
+                    else:
+                        non_contiguous_ways[role][way_id] = [start_point, end_point]
 
-                    for true_node_id in true_node_ids:
-                        if true_node_id != dupe_id_check:
-                            self.dicosmr[osm_id][role][0].append(true_node_id)
+                # for paths composed of multiple ways
+                for role in ['outer', 'inner']:
+                    if non_contiguous_ways[role]:
+                        complete_way = []
+                        way_ids = list(non_contiguous_ways[role].keys())
+                        edge_nodes = list(non_contiguous_ways[role].values())
 
-                        dupe_id_check = true_node_id
+                        # check for ill formed relations
+                        node_ids = [n for e in edge_nodes for n in e]
+                        if check_too_many_ids(node_ids):
+                            # If there's more or less than 2 ways attached to a node point, it's bad, so remove it.
+                            UI.lvprint(2, "Relation id=", osm_id, "is ill formed and was not treated.")
+                            del self.dicosmr[osm_id]
+                            del self.dicosmrorig[osm_id]
+                            if osm_id in self.dicosmfirst['r']:
+                                self.dicosmfirst['r'].remove(osm_id)
+                            if osm_id in self.dicosmtags['r']:
+                                del(self.dicosmtags['r'][osm_id])
+                            self.next_rel_id += 1
+                            break
+
+                        # Start it with the first
+                        complete_way += self.dicosmw[way_ids.pop(0)]
+                        del edge_nodes[0]
+                        last = complete_way[-1]
+                        first_node_index = [i[0] for i in edge_nodes]
+                        last_node_index = [i[1] for i in edge_nodes]
+
+                        while len(way_ids) > 0:
+                            if last in first_node_index:
+                                node_index = first_node_index.index(last)
+                            else:
+                                node_index = last_node_index.index(last)
+
+                            node_ids = self.dicosmw[way_ids[node_index]].copy()
+                            node_points = edge_nodes[node_index]
+
+                            if node_points.index(last)== 1:
+                                node_ids.reverse()
+
+                            del node_ids[0]
+                            complete_way += node_ids
+                            last = complete_way[-1]
+                            del first_node_index[node_index]
+                            del last_node_index[node_index]
+                            del way_ids[node_index]
+                            del edge_nodes[node_index]
+
+                        self.dicosmr[osm_id][role].append(complete_way)
 
                 # tags
-                process_tags(relation, osm_id, 'r')
-
-            else:  # If there's more or less than 2 outer/inner way elements, it's not used, so skip it.
-                UI.lvprint(2, "Relation id=", osm_id, "is ill formed and was not treated.")
+                self.process_tags(relation, osm_id, 'r')
 
         UI.vprint(2, "      A total of " + str(len(self.dicosmn) - initnodes) + " new node(s), " +
                   str(len(self.dicosmfirst['w']) - initways) + " new ways and " +
                   str(len(self.dicosmfirst['r']) - initrels) + " new relation(s).")
+        return 1
+
+    def process_tags(self, parent, parent_id, parent_type):
+        """
+        There are multiple attribute types which require getting nested tags, so keeping the function DRY and
+        within scope.
+
+        :param parent: (object) the parsed XML tag object
+        :param parent_id: (int) the ID of the parent tag
+        :param parent_type: (str) the type of the parent
+        :return: 1/True
+        """
+        # Maybe move this into the class in the future for testing purposes.
+        for tag in parent.findall('tag'):
+            # Do we need to catch that tag?
+            k = tag.get('k')
+            v = tag.get('v')
+            if (not self.input_tags) or (('all', '') in self.target_tags[parent_type]) \
+                    or ((k, '') in self.target_tags[parent_type]) \
+                    or ((k, v) in self.target_tags[parent_type]):
+                if parent_id not in self.dicosmtags[parent_type]:
+                    self.dicosmtags[parent_type][parent_id] = {k: v}
+                else:
+                    self.dicosmtags[parent_type][parent_id][k] = v
+
+                # If so, do we need to declare this osm_id as a first catch, not one only brought with as a child
+                if self.input_tags and (((k, '') in self.input_tags[parent_type])
+                                        or ((k, v) in self.input_tags[parent_type])):
+                    self.dicosmfirst[parent_type].add(parent_id)
+
         return 1
 
     def write_to_file(self, filename):
@@ -232,8 +271,7 @@ class OSM_layer:
                                                       'version': '1'})
             if node_id in self.dicosmfirst['n']:  # tags!
                 for tag in self.dicosmtags['n'][node_id]:
-                    tag_value = self.dicosmtags['n'][node_id][tag]
-                    ET.SubElement(node, 'tag', attrib={'k': tag, 'v': tag_value})
+                    ET.SubElement(node, 'tag', attrib={'k': tag, 'v': self.dicosmtags['n'][node_id][tag]})
 
         # ways
         for way_id in self.dicosmw.keys():
@@ -242,20 +280,17 @@ class OSM_layer:
                 ET.SubElement(way, 'nd', attrib={'ref': str(node_id)})
             if way_id in self.dicosmtags['w']:
                 for tag in self.dicosmtags['w'][way_id]:
-                    tag_value = self.dicosmtags['w'][way_id][tag]
-                    ET.SubElement(way, 'tag', attrib={'k': tag, 'v': tag_value})
+                    ET.SubElement(way, 'tag', attrib={'k': tag, 'v': self.dicosmtags['w'][way_id][tag]})
 
         # relations
         for relation_id in self.dicosmr.keys():
             relation = ET.SubElement(osm, 'relation', attrib={'id': str(relation_id), 'version': '1'})
-            for way_id in self.dicosmrorig[relation_id]['outer']:
-                ET.SubElement(relation, 'member', attrib={'type': 'way', 'ref': str(way_id), 'role': 'outer'})
-            for way_id in self.dicosmrorig[relation_id]['inner']:
-                ET.SubElement(relation, 'member', attrib={'type': 'way', 'ref': str(way_id), 'role': 'inner'})
+            for role in ['outer', 'inner']:
+                for way_id in self.dicosmrorig[relation_id][role]:
+                    ET.SubElement(relation, 'member', attrib={'type': 'way', 'ref': str(way_id), 'role': role})
             if relation_id in self.dicosmtags['r']:
                 for tag in self.dicosmtags['r'][relation_id]:
-                    tag_value = self.dicosmtags['r'][relation_id][tag]
-                    ET.SubElement(relation, 'tag', attrib={'k': tag, 'v': tag_value})
+                    ET.SubElement(relation, 'tag', attrib={'k': tag, 'v': self.dicosmtags['r'][relation_id][tag]})
 
         xml_indent(osm)
         tree = ET.ElementTree(osm)
@@ -297,6 +332,22 @@ def xml_indent(elem, level=0):
             elem.tail = i
 
     return 1
+
+
+def check_too_many_ids(ids):
+    """used for checking ill-formed relations in a layer"""
+    id_counts = {}
+    for i in ids:
+        if i in id_counts:
+            id_counts[i] += 1
+        else:
+            id_counts[i] = 1
+
+    for c in list(id_counts.values()):
+        if c != 2:
+            return 1
+
+    return 0
 
 
 def OSM_query_to_OSM_layer(queries, bbox, osm_layer, tags_of_interest=None, server_code=None, cached_file_name=''):
@@ -441,7 +492,7 @@ def get_overpass_data(query, bbox, server_code=None):
                     UI.vprint(1, "        OSM server", true_server_code,
                               "sent a corrupted answer (no closing </osm> tag in answer), new tentative in",
                               2**tentative, "sec...")
-                elif len(r.content)<=1000 and b"error" in r.content:
+                elif len(r.content) <= 1000 and b"error" in r.content:
                     UI.vprint(1, "        OSM server", true_server_code,
                               "sent us an error code for the data (data too big ?), new tentative in",
                               2**tentative, "sec...")
