@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="Overpass API 0.7.55.5 2ca3f387">
+<note>The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.</note>
+<meta osm_base="2019-02-21T14:35:02Z"/>
+
+  <node id="219850" lat="41.7585879" lon="-87.9101245" version="55" timestamp="2018-02-20T05:50:28Z" changeset="56510598" uid="4018842" user="Stephen214">
+    <tag k="highway" v="motorway_junction"/>
+    <tag k="ref" v="276C"/>
+  </node>
+  <node id="219851" lat="41.7593116" lon="-87.9076432" version="48" timestamp="2018-02-20T05:50:29Z" changeset="56510598" uid="4018842" user="Stephen214">
+    <tag k="highway" v="motorway_junction"/>
+    <tag k="ref" v="277A"/>
+  </node>
+  <node id="700728" lat="41.7187545" lon="-88.0029645" version="2" timestamp="2009-04-13T11:25:41Z" changeset="485405" uid="18480" user="nickvet419"/>
+  <node id="700729" lat="41.7199717" lon="-88.0005612" version="2" timestamp="2009-04-13T11:25:41Z" changeset="485405" uid="18480" user="nickvet419"/>
+  <node id="700731" lat="41.7258174" lon="-87.9887166" version="2" timestamp="2009-04-13T11:25:41Z" changeset="485405" uid="18480" user="nickvet419"/>
+  1:25:41Z" changeset="485405" uid="18480" user="nickvet419"/>
+  <node id="700733" lat="41.7236393" lon="-87.9934158" version="2" timestamp="2009-04-13T11:25:41Z" changeset="485405" uid="18480" user="nickvet419"/>
+  <node id="700734" lat="41.7222620" lon="-87.9961195" version="2" timestamp="2009-04-13T11:25:41Z" changeset="485405" uid="18480" user="nickvet419"/>
+  <node id="700738" lat="41.7272907" lon="-87.9847040" version="2" timestamp="2009-04-13T11:25:41Z" changeset="485405" uid="18480" user="nickvet419"/>
+  <node id="700739" lat="41.7292813" lon="-87.9788003" version="3" timestamp="2012-04-23T23:38:56Z" changeset="11400783" uid="239998" user="Sundance"/>
+  <node id="700740" lat="41.7305095" lon="-87.9752197" version="2" timestamp="2009-04-13T11:25:41Z" changeset="485405" uid="18480" user="nickvet419"/>
+  <way id="516465373" version="10" timestamp="2018-12-17T22:11:42Z" changeset="65564743" uid="604536" user="jimjoe45">
+    <nd ref="3156470489"/>
+    <nd ref="6143661235"/>
+    <nd ref="5700524149"/>
+    <nd ref="4285721330"/>
+    <nd ref="4285721331"/>
+    <nd ref="4285721306"/>
+    <nd ref="4285721308"/>
+    <tag k="highway" v="motorway"/>
+    <tag k="maxspeed" v="55 mph"/>
+    <tag k="name" v="Elgin-O'Hare Tollway"/>
+    <tag k="oneway" v="yes"/>
+    <tag k="ref" v="IL 390"/>
+    <tag k="source" v="https://www.illinoistollway.com/projects/eowa"/>
+    <tag k="toll" v="yes"/>
+  </way>
+
+    <tag k="oneway" v="yes"/>
+    <tag k="proposed" v="motorway"/>
+    <tag k="ref" v="IL 390"/>
+    <tag k="source" v="https://www.illinoistollway.com/projects/eowa"/>
+    <tag k="toll" v="yes"/>
+  </way>
+  <way id="516465375" version="7" timestamp="2018-05-04T06:44:39Z" changeset="58668943" uid="5245700" user="georges_telenav">
+    <nd ref="4285721311"/>
+    <nd ref="5041689765"/>
+    <tag k="bridge" v="yes"/>
+    <tag k="highway" v="motorway"/>
+    <tag k="layer" v="1"/>
+    <tag k="maxspeed" v="55 mph"/>
+    <tag k="name" v="Elgin-O'Hare Tollway"/>
+    <tag k="oneway" v="yes"/>
+    <tag k="proposed" v="motorway"/>
+    <tag k="ref" v="IL 390"/>
+    <tag k="source" v="https://www.illinoistollway.com/projects/eowa"/>
+    <tag k="toll" v="yes"/>
+  </way>
+
+</osm>

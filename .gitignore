@@ -1,3 +1,16 @@
+*.log
 .idea
-*.bak
+.last_gui_params.txt
 __pycache__
+Ortho4XP.cfg
+Ortho4XP.cfg.bak
+Elevation_data/
+Geotiffs/
+Masks/
+OSM_data/
+Orthophotos/
+Patches/
+Previews/
+Tiles/
+tmp/
+yOrtho4XP_Overlays/
