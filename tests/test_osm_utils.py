@@ -292,10 +292,14 @@ class TestOsmQueriesToOsmLayer(unittest.TestCase):
 
         bz_mock.return_value.close()
 
+    @mock.patch('os.path.isfile')
+    @mock.patch('O4_File_Names.osm_old_cached')
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     @mock.patch('O4_UI_Utils.vprint')
-    def test_osm_queries_to_osm_layer_from_server(self, vprint_mock, session_mock):
+    def test_osm_queries_to_osm_layer_from_server(self, vprint_mock, session_mock, file_mock, os_mock):
         vprint_mock.vprint = None
+        file_mock.return_value = os.path.join(MOCKS_DIR, 'cached_aeroways.osm.bz2')
+        os_mock.return_value = False
         session_mock.return_value.status_code = 200
         osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
         session_mock.return_value.content = osm_file.read().encode()
