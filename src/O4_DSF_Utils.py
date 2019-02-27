@@ -190,6 +190,12 @@ def create_terrain_file(tile,texture_file_name,til_x_left,til_y_top,zoomlevel,pr
                +'{:.5f}'.format(lon_med)+' '\
                +str(texture_approx_size)+' 4096\n')
         f.write('BASE_TEX_NOWRAP ../textures/'+texture_file_name+'\n')
+
+        # this is cheap, it will be changed
+        spt = texture_file_name.split('_')
+        night_texture_file_name = spt[0] + '_' + spt[1] + '_NM_ZL' + str(zoomlevel) + '.png'
+        f.write('LIT_TEX_NOWRAP ../textures/' + night_texture_file_name + '\n')
+
         if tri_type in (1,2) and not is_overlay: # experimental water
             f.write('TEXTURE_NORMAL '+str(2**(17-zoomlevel))+' ../textures/water_normal_map.dds\n')
             f.write('GLOBAL_specular 1.0\n')

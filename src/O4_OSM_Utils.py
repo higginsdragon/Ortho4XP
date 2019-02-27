@@ -308,6 +308,37 @@ class OSM_layer:
 
         return 1
 
+    # get ways from box
+    # test for hemispheres
+    def get_highways_from_box(self, bbox, tag=None):
+        """
+        This returns all the ways within a given bounding box. Used for grabbing a subset of ways within a tile,
+        such as for use in a single orthogrid tile.
+
+        :param bbox: tuple lat/long box to search within, e.g. (lat_min, lon_min, lat_max, lon_max))
+        :return: [way_ids]
+        """
+        included_ways = []
+        way_ids = []
+
+        if tag:
+            for way_id in self.dicosmtags['w'].keys():
+                tags = self.dicosmtags['w'][way_id]
+                if 'highway' in tags:
+                    if tags['highway'] == tag:
+                        way_ids.append(way_id)
+        else:
+            way_ids = self.dicosmw.keys()
+
+        for way_id in way_ids:
+            for node_id in self.dicosmw[way_id]:
+                (lon, lat) = self.dicosmn[node_id]
+                if bbox[2] > lat > bbox[0] and bbox[3] > lon > bbox[1]:
+                    included_ways.append(way_id)
+                    break
+
+        return included_ways
+
 
 def xml_indent(elem, level=0):
     """
