@@ -105,6 +105,16 @@ class TestOSMLayer(unittest.TestCase):
         self.assertEqual([-3403, -3404, -3405, -3406, -3407, -3408, -3409, -3410, -3411, -3412, -3413, -3403],
                          layer.dicosmr[-16]['inner'][0])
 
+    def test_update_dicosm_water_rel(self):
+        layer = OSM.OSM_layer()
+        file_name = os.path.join(MOCKS_DIR, 'osm_41088W_water_rel_raw.xml')
+        layer.update_dicosm(file_name)
+
+        self.assertEqual(108252, len(layer.dicosmn))
+        self.assertEqual(1154, len(layer.dicosmw))
+        self.assertEqual(114, len(layer.dicosmr))
+        self.assertEqual(234, len(layer.dicosmr[-30]['inner']))
+
     def test_update_dicosm_bad_relation(self):
         layer = OSM.OSM_layer()
         osm_file_name = os.path.join(MOCKS_DIR, 'osm_bad_relation.xml')
@@ -292,10 +302,14 @@ class TestOsmQueriesToOsmLayer(unittest.TestCase):
 
         bz_mock.return_value.close()
 
+    @mock.patch('os.path.isfile')
+    @mock.patch('O4_File_Names.osm_old_cached')
     @mock.patch('O4_OSM_Utils.requests.Session.get')
     @mock.patch('O4_UI_Utils.vprint')
-    def test_osm_queries_to_osm_layer_from_server(self, vprint_mock, session_mock):
+    def test_osm_queries_to_osm_layer_from_server(self, vprint_mock, session_mock, file_mock, os_mock):
         vprint_mock.vprint = None
+        file_mock.return_value = os.path.join(MOCKS_DIR, 'cached_aeroways.osm.bz2')
+        os_mock.return_value = False
         session_mock.return_value.status_code = 200
         osm_file = open(os.path.join(MOCKS_DIR, 'osm_get_aeroways.xml'))
         session_mock.return_value.content = osm_file.read().encode()

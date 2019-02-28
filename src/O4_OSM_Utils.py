@@ -103,13 +103,12 @@ class OSM_layer:
             else:
                 true_osm_id = self.next_node_id
                 node_id_dict[osm_id] = true_osm_id
-                osm_id = true_osm_id
-                self.dicosmn_reverse[coords] = osm_id
-                self.dicosmn[osm_id] = coords
+                self.dicosmn_reverse[coords] = true_osm_id
+                self.dicosmn[true_osm_id] = coords
                 self.next_node_id -= 1
 
             # tags
-            self.process_tags(node, osm_id, 'n')
+            self.process_tags(node, true_osm_id, 'n')
 
         # ways
         for way in osm_parsed.findall('way'):
@@ -195,15 +194,23 @@ class OSM_layer:
                         last_node_index = [i[1] for i in edge_nodes]
 
                         while len(way_ids) > 0:
+                            path_start = False
+
                             if last in first_node_index:
                                 node_index = first_node_index.index(last)
-                            else:
+                            elif last in last_node_index:
                                 node_index = last_node_index.index(last)
+                            else:  # more paths in this relation, start from beginning of list
+                                node_index = 0
+                                last = last_node_index[0]
+                                self.dicosmr[osm_id][role].append(complete_way)
+                                complete_way = []
+                                path_start = True
 
                             node_ids = self.dicosmw[way_ids[node_index]].copy()
                             node_points = edge_nodes[node_index]
 
-                            if node_points.index(last)== 1:
+                            if not path_start and node_points.index(last) == 1:
                                 node_ids.reverse()
 
                             del node_ids[0]
