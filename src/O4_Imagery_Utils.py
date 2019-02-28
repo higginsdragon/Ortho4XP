@@ -1123,7 +1123,7 @@ def build_geotiffs(tile,texture_attributes_list):
     return
 ###############################################################################################################################
 
-
+# proof-of-concept night textures. now the real work and optimization begins
 def build_night_textures(tile):
     (til_xmin, til_ymin) = GEO.wgs84_to_orthogrid(tile.lat + 1, tile.lon, tile.night_texture_zl)
     (til_xmax, til_ymax) = GEO.wgs84_to_orthogrid(tile.lat, tile.lon + 1, tile.night_texture_zl)
@@ -1179,19 +1179,29 @@ def get_night_texture_highway_info(til_x_left, til_y_top, tile):
     for hwy_type in ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential']:
         way_ids = road_layer.get_highways_from_box((lat_bottom, lon_left, lat_top, lon_right), hwy_type)
 
-        # Build a dictionary of nodes
-        nodes = {}
         ways = []
-
+        nodes = {}
         for way_id in way_ids:
-            way_node_ids = road_layer.dicosmw[way_id]
-            ways.append(way_node_ids)
-
-            for node_id in way_node_ids:
+            node_ids = road_layer.dicosmw[way_id]
+            ways.append(node_ids)
+            for node_id in node_ids:
                 lat = road_layer.dicosmn[node_id][1]
                 lon = road_layer.dicosmn[node_id][0]
                 nodes[node_id] = (lat, lon)
 
+        # Build a dictionary of nodes
+        # nodes = {}
+        # ways = []
+        #
+        # for way_id in way_ids:
+        #     way_node_ids = road_layer.dicosmw[way_id]
+        #     ways.append(way_node_ids)
+        #
+        #     for node_id in way_node_ids:
+        #         lat = road_layer.dicosmn[node_id][1]
+        #         lon = road_layer.dicosmn[node_id][0]
+        #         nodes[node_id] = (lat, lon)
+        #
         highway_map[hwy_type] = (nodes, ways)
 
     return HighwayInfo(lat_top, lon_left, tile, highway_map)
@@ -1212,17 +1222,40 @@ def build_one_night_texture(til_x_left, til_y_top, highway_info):
     d = ImageDraw.Draw(img)
     for hwy_type, map_data in highway_map.items():
         nodes = map_data[0]
-        for _, node in nodes.items():
-            (x1, y1) = GEO.wgs84_to_pix(node[0], node[1], zl)
-            x = x1 - x0
-            y = y1 - y0
-            if 0 < x <= 4096 and 0 < y <= 4096:
-                if hwy_type == 'motorway':
-                    d.ellipse((x-8, y-8, x+8, y+8), '#d5a548')
-                elif hwy_type == 'trunk':
-                    d.ellipse((x-6, y-6, x+6, y+6), '#d5a548')
-                else:
-                    d.ellipse((x-3, y-3, x+3, y+3), '#d5a548')
+        ways = map_data[1]
+
+        for way in ways:
+            light_color = '#da7f2a'  # dimmer: a1621d
+            # create a line
+            way_line = []
+            for node_id in way:
+                coords = nodes[node_id]
+                (x1, y1) = GEO.wgs84_to_pix(coords[0], coords[1], zl)
+                x = x1 - x0
+                y = y1 - y0
+                way_line.append((x, y))
+
+            if hwy_type == 'motorway':
+                width = 16
+                light_color = '#ed912e'
+            elif hwy_type == 'trunk':
+                width = 12
+            else:
+                width = 6
+
+            d.line(way_line, light_color, width)
+
+        # for _, node in nodes.items():
+        #     (x1, y1) = GEO.wgs84_to_pix(node[0], node[1], zl)
+        #     x = x1 - x0
+        #     y = y1 - y0
+        #     if 0 < x <= 4096 and 0 < y <= 4096:
+        #         if hwy_type == 'motorway':
+        #             d.ellipse((x-8, y-8, x+8, y+8), light_color)
+        #         elif hwy_type == 'trunk':
+        #             d.ellipse((x-6, y-6, x+6, y+6), light_color)
+        #         else:
+        #             d.ellipse((x-3, y-3, x+3, y+3), light_color)
 
     del d
     night_file = os.path.join(tile.build_dir, "textures", FNAMES.night_file(til_x_left, til_y_top, zl))
