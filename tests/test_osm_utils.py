@@ -272,6 +272,28 @@ class TestOSMLayer(unittest.TestCase):
         # cleanup
         os.remove(temp_file_path)
 
+    def test_get_ways_from_box(self):
+        layer = OSM.OSM_layer()
+        file_path_string = os.path.join(MOCKS_DIR, 'osm_41088W_test_raw.xml.bz2')
+
+        result = layer.update_dicosm(file_path_string)
+
+        self.assertEqual(True, result)
+
+        test_box = (41, -88, 42, -87)
+        self.assertEqual(11832, len(layer.get_ways_from_box(test_box)))
+        self.assertEqual(0, len(layer.get_ways_from_box(test_box, ['aeroway'])))
+        self.assertEqual(11832, len(layer.get_ways_from_box(test_box, ['highway'])))
+        self.assertEqual(8981, len(layer.get_ways_from_box(test_box, [['highway', 'primary']])))
+        self.assertEqual(816, len(layer.get_ways_from_box(test_box, [['highway', 'trunk']])))
+
+        test_box = (41.15, -87.35, 41.40, -87.10)
+        self.assertEqual(69, len(layer.get_ways_from_box(test_box, ['highway'])))
+        self.assertEqual(42, len(layer.get_ways_from_box(test_box, [['highway', 'motorway']])))
+        self.assertEqual(27, len(layer.get_ways_from_box(test_box, [['highway', 'primary']])))
+        self.assertEqual(69, len(layer.get_ways_from_box(test_box, [['highway', 'motorway'],
+                                                                    ['highway', 'primary']])))
+
 
 class TestOsmQueriesToOsmLayer(unittest.TestCase):
 

@@ -316,24 +316,33 @@ class OSM_layer:
         return 1
 
     # get ways from box
-    # test for hemispheres
-    def get_highways_from_box(self, bbox, tag=None):
+    # TODO: test for hemispheres
+    def get_ways_from_box(self, bbox, filter_tags=None):
         """
         This returns all the ways within a given bounding box. Used for grabbing a subset of ways within a tile,
         such as for use in a single orthogrid tile.
 
         :param bbox: tuple lat/long box to search within, e.g. (lat_min, lon_min, lat_max, lon_max))
+        :param filter_tags: OSM tags to get from box, sent as an array, e.g. ["aeroway", ["highway", "trunk"]]
         :return: [way_ids]
         """
         included_ways = []
         way_ids = []
 
-        if tag:
-            for way_id in self.dicosmtags['w'].keys():
-                tags = self.dicosmtags['w'][way_id]
-                if 'highway' in tags:
-                    if tags['highway'] == tag:
-                        way_ids.append(way_id)
+        if filter_tags:
+            for filter_tag in filter_tags:
+                secondary_tag = ''
+                if isinstance(filter_tag, str):
+                    primary_tag = filter_tag
+                else:  # should be an array
+                    primary_tag = filter_tag[0]
+                    secondary_tag = filter_tag[1]
+
+                for way_id in self.dicosmtags['w'].keys():
+                    tags = self.dicosmtags['w'][way_id]
+                    if primary_tag in tags:
+                        if not secondary_tag or tags[primary_tag] == secondary_tag:
+                            way_ids.append(way_id)
         else:
             way_ids = self.dicosmw.keys()
 

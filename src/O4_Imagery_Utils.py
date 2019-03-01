@@ -1123,46 +1123,17 @@ def build_geotiffs(tile,texture_attributes_list):
     return
 ###############################################################################################################################
 
+
 # proof-of-concept night textures. now the real work and optimization begins
 def build_night_textures(tile):
     (til_xmin, til_ymin) = GEO.wgs84_to_orthogrid(tile.lat + 1, tile.lon, tile.night_texture_zl)
     (til_xmax, til_ymax) = GEO.wgs84_to_orthogrid(tile.lat, tile.lon + 1, tile.night_texture_zl)
 
-    texture_queue = queue.Queue()
+#    texture_queue = queue.Queue()
 
-    for til_y_top in range(til_ymin, til_ymax + 1, 16):
-        for til_x_left in range(til_xmin, til_xmax + 1, 16):
-            if UI.red_flag:
-                return
-            highway_info = get_night_texture_highway_info(til_x_left, til_y_top, tile)
-            fargs = (til_x_left, til_y_top, highway_info)
-#            texture_queue.put(fargs)
-
-#    parallel_execute(build_one_night_texture, texture_queue, 4, None)
-            build_one_night_texture(til_x_left, til_y_top, highway_info)
-
-    return
-
-
-def get_night_texture_highway_info(til_x_left, til_y_top, tile):
-    """Returns a HighwayInfo representing the highways in this tile square"""
-    zl = tile.night_texture_zl
-
-    # Convert x, y into lat/lon
-    (lat_top, lon_left) = GEO.gtile_to_wgs84(til_x_left, til_y_top, zl)
-    (lat_bottom, lon_right) = GEO.gtile_to_wgs84(til_x_left + 16, til_y_top + 16, zl)
-
+    # Grab all the info we want for the night lighting.
     # Download the OSM data.
-    UI.vprint(1, "-> Getting OSM data for %s,%s (%f,%f,%f,%f)" % (til_x_left,
-                                                                  til_y_top,
-                                                                  lat_bottom,
-                                                                  lon_left,
-                                                                  lat_top,
-                                                                  lon_right))
-
-    # Build a map of highway type (motorway, residential) to corresponding
-    # node map and ways list
-    highway_map = {}
+    UI.vprint(1, "-> Getting OSM data for (%s, %s)" % (tile.lat, tile.lon))
     road_layer = OSM.OSM_layer()
     queries = [
         'way["highway"="motorway"]',
@@ -1176,8 +1147,35 @@ def get_night_texture_highway_info(til_x_left, til_y_top, tile):
     if not OSM.OSM_queries_to_OSM_layer(queries, road_layer, tile.lat, tile.lon, cached_suffix='night_roads'):
         return 0
 
+    for til_y_top in range(til_ymin, til_ymax + 1, 16):
+        for til_x_left in range(til_xmin, til_xmax + 1, 16):
+            if UI.red_flag:
+                return
+            highway_info = get_night_texture_highway_info(til_x_left, til_y_top, tile, road_layer)
+            fargs = (til_x_left, til_y_top, highway_info)
+#            texture_queue.put(fargs)
+
+#    parallel_execute(build_one_night_texture, texture_queue, 4, None)
+            build_one_night_texture(til_x_left, til_y_top, highway_info)
+
+    return
+
+
+def get_night_texture_highway_info(til_x_left, til_y_top, tile, road_layer):
+    """Returns a HighwayInfo representing the highways in this tile square"""
+    zl = tile.night_texture_zl
+
+    # Convert x, y into lat/lon
+    (lat_top, lon_left) = GEO.gtile_to_wgs84(til_x_left, til_y_top, zl)
+    (lat_bottom, lon_right) = GEO.gtile_to_wgs84(til_x_left + 16, til_y_top + 16, zl)
+
+    # Build a map of highway type (motorway, residential) to corresponding
+    # node map and ways list
+    highway_map = {}
+
     for hwy_type in ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential']:
-        way_ids = road_layer.get_highways_from_box((lat_bottom, lon_left, lat_top, lon_right), hwy_type)
+        tags = ["highway", hwy_type]
+        way_ids = road_layer.get_ways_from_box((lat_bottom, lon_left, lat_top, lon_right), filter_tags=tags)
 
         ways = []
         nodes = {}
@@ -1189,19 +1187,6 @@ def get_night_texture_highway_info(til_x_left, til_y_top, tile):
                 lon = road_layer.dicosmn[node_id][0]
                 nodes[node_id] = (lat, lon)
 
-        # Build a dictionary of nodes
-        # nodes = {}
-        # ways = []
-        #
-        # for way_id in way_ids:
-        #     way_node_ids = road_layer.dicosmw[way_id]
-        #     ways.append(way_node_ids)
-        #
-        #     for node_id in way_node_ids:
-        #         lat = road_layer.dicosmn[node_id][1]
-        #         lon = road_layer.dicosmn[node_id][0]
-        #         nodes[node_id] = (lat, lon)
-        #
         highway_map[hwy_type] = (nodes, ways)
 
     return HighwayInfo(lat_top, lon_left, tile, highway_map)
@@ -1225,7 +1210,7 @@ def build_one_night_texture(til_x_left, til_y_top, highway_info):
         ways = map_data[1]
 
         for way in ways:
-            light_color = '#da7f2a'  # dimmer: a1621d
+            light_color = '#da7f2a'
             # create a line
             way_line = []
             for node_id in way:
@@ -1240,22 +1225,13 @@ def build_one_night_texture(til_x_left, til_y_top, highway_info):
                 light_color = '#ed912e'
             elif hwy_type == 'trunk':
                 width = 12
+            elif hwy_type == 'primary':
+                width = 8
             else:
+                light_color = '#a1621d'
                 width = 6
 
             d.line(way_line, light_color, width)
-
-        # for _, node in nodes.items():
-        #     (x1, y1) = GEO.wgs84_to_pix(node[0], node[1], zl)
-        #     x = x1 - x0
-        #     y = y1 - y0
-        #     if 0 < x <= 4096 and 0 < y <= 4096:
-        #         if hwy_type == 'motorway':
-        #             d.ellipse((x-8, y-8, x+8, y+8), light_color)
-        #         elif hwy_type == 'trunk':
-        #             d.ellipse((x-6, y-6, x+6, y+6), light_color)
-        #         else:
-        #             d.ellipse((x-3, y-3, x+3, y+3), light_color)
 
     del d
     night_file = os.path.join(tile.build_dir, "textures", FNAMES.night_file(til_x_left, til_y_top, zl))
