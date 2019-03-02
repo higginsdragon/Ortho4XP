@@ -1,5 +1,5 @@
 *.log
-.idea
+.idea/
 .last_gui_params.txt
 __pycache__
 _trial_temp
@@ -16,8 +16,4 @@ Tiles/
 tmp/
 yOrtho4XP_Overlays/
 *.log
-.last_gui_params.txt
-.idea/
-Ortho4XP.cfg
-Ortho4XP.cfg.bak
 
