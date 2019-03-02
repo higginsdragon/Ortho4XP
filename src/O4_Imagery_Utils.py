@@ -10,7 +10,7 @@ from math import ceil, log, tan, pi
 from collections import namedtuple
 import numpy
 import xml.etree.ElementTree as ET
-from PIL import Image, ImageFilter, ImageEnhance, ImageDraw, ImageOps
+from PIL import Image, ImageFilter, ImageEnhance, ImageDraw, ImageOps, ImageChops
 Image.MAX_IMAGE_PIXELS = 1000000000 # Not a decompression bomb attack!
 import O4_UI_Utils as UI
 import O4_Geo_Utils as GEO
@@ -1236,7 +1236,38 @@ def build_one_night_texture(til_x_left, til_y_top, highway_info):
     del d
     night_file = os.path.join(tile.build_dir, "textures", FNAMES.night_file(til_x_left, til_y_top, zl))
     img.save(night_file, "PNG")
+    color_mask_night_texture(tile, til_x_left, til_y_top)
     return
+
+
+# TODO: Use original orthophotos instead of DDS
+# TODO: combine this with original creation to minimize disk use
+def color_mask_night_texture(tile, til_x, til_y):
+    """
+    This takes the night texture and uses it to mask out detail from the original texture tile
+    :return:
+    """
+    ortho_file_path = (os.path.join(tile.build_dir,
+                                    'textures/{y}_{x}_{prov}{zl}.dds'.format(y=til_y,
+                                                                             x=til_x,
+                                                                             prov=tile.default_website,
+                                                                             zl=tile.default_zl)))
+    night_file = os.path.join(tile.build_dir, "textures", FNAMES.night_file(til_x, til_y, tile.default_zl))
+    try:
+        ortho_image = Image.open(ortho_file_path).convert('RGBA')
+        ortho_lights = Image.open(night_file).convert('RGBA')
+    except FileNotFoundError:
+        return 0
+    mask = ortho_lights.convert('L')
+    mask = ImageEnhance.Brightness(mask).enhance(1.5)
+    blank = Image.new('RGBA', ortho_lights.size, (0, 0, 0, 255))
+    masked_im = Image.composite(ortho_image, blank, mask)
+    output_im = ImageChops.multiply(masked_im, ortho_lights)
+    output_im = ImageEnhance.Brightness(output_im).enhance(1.75)
+    output_im.save(night_file)
+
+    return
+
 
 ###############################################################################################################################
 def build_texture_region(dest_dir,latmin,latmax,lonmin,lonmax,zoomlevel,provider_code):

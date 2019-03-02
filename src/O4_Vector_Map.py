@@ -27,7 +27,8 @@ def build_poly_file(tile):
     UI.logprint("Step 1 for tile lat=",tile.lat,", lon=",tile.lon,": starting.")
     UI.vprint(0,"\nStep 1 : Building vector data for tile "+FNAMES.short_latlon(tile.lat,tile.lon)+" : \n--------\n")
     timer=time.time()
-    
+
+    # TODO: This should go into the OSM save function most likely
     if not os.path.exists(tile.build_dir):
         os.makedirs(tile.build_dir)
     if not os.path.exists(FNAMES.osm_dir(tile.lat,tile.lon)):
