@@ -8,6 +8,8 @@ from shapely import geometry, ops
 import O4_UI_Utils as UI
 import O4_File_Names as FNAMES
 import xml.etree.ElementTree as ET
+import gettext
+_ = gettext.gettext
 
 overpass_servers={
         "DE": "http://overpass-api.de/api/interpreter",
@@ -404,7 +406,7 @@ def OSM_query_to_OSM_layer(queries, bbox, osm_layer, tags_of_interest=None, serv
                         target_tags[osm_type].append(tag)
 
     if cached_file_name and os.path.isfile(cached_file_name):
-        UI.vprint(1, "    * Recycling OSM data from", cached_file_name)
+        UI.vprint(1, _("    * Recycling OSM data from {cached_file_name}").format(cached_file_name=cached_file_name))
         # If file is bad, gracefully continue to download new data.
         if osm_layer.update_dicosm(cached_file_name, input_tags, target_tags):
             return 1
@@ -416,11 +418,11 @@ def OSM_query_to_OSM_layer(queries, bbox, osm_layer, tags_of_interest=None, serv
         if isinstance(query, str):
             old_cached_data_filename = FNAMES.osm_old_cached(lat, lon, query)
             if os.path.isfile(old_cached_data_filename):
-                UI.vprint(1, "    * Recycling OSM data for", query)
+                UI.vprint(1, _("    * Recycling OSM data for {query}").format(query=query))
                 osm_layer.update_dicosm(old_cached_data_filename, input_tags, target_tags)
                 continue
 
-        UI.vprint(1, "    * Downloading OSM data for", query)
+        UI.vprint(1, _("    * Downloading OSM data for {query}").format(query=query))
         response = get_overpass_data(query, bbox, server_code)
 
         if UI.red_flag:

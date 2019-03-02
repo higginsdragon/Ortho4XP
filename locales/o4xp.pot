@@ -1,0 +1,249 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR ORGANIZATION
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2019-03-02 10:19+UTC\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: ENCODING\n"
+"Generated-By: pygettext.py 1.5\n"
+
+
+#: src/O4_Config_Utils.py:21
+msgid "verbosity hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:22
+msgid "cleaning_level hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:23
+msgid "overpass_server_choice hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:24
+msgid "skip_downloads hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:25
+msgid "skip_converts hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:26
+msgid "max_convert_slots hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:27
+msgid "check_tms_response hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:28
+msgid "http_timeout hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:29
+msgid "max_connect_retries hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:30
+msgid "max_baddata_retries hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:31
+msgid "ovl_exclude_pol hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:32
+msgid "ovl_exclude_net hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:33
+msgid "custom_scenery_dir hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:34
+msgid "custom_overlay_src hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:36
+msgid "apt_smoothing_pix hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:37
+msgid "road_level hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:38
+msgid "road_banking_limit hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:39
+msgid "lane_width hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:40
+msgid "max_levelled_segs hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:41
+msgid "water_simplification hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:42
+msgid "min_area hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:43
+msgid "max_area hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:44
+msgid "clean_bad_geometries hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:45
+msgid "mesh_zl hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:47
+msgid "curvature_tol hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:48
+msgid "apt_curv_tol hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:49
+msgid "apt_curv_ext hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:50
+msgid "coast_curv_tol hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:51
+msgid "coast_curv_ext hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:52
+msgid "limit_tris hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:53
+msgid "hmin hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:54
+msgid "min_angle hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:55
+msgid "sea_smoothing_mode hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:56
+msgid "water_smoothing hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:57
+msgid "iterate hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:59
+msgid "mask_zl hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:60
+msgid "masks_width hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:61
+msgid "masking_mode hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:62
+msgid "use_masks_for_inland hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:63
+msgid "imprint_masks_to_dds hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:64
+msgid "masks_use_DEM_too hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:65
+msgid "masks_custom_extent hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:70
+msgid "cover_airports_with_highres hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:71
+msgid "cover_extent hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:72
+msgid "cover_zl hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:73
+msgid "sea_texture_blur hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:74
+msgid "add_low_res_sea_ovl hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:75
+msgid "experimental_water hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:76
+msgid "ratio_water hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:77
+msgid "normal_map_strength hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:78
+msgid "terrain_casts_shadows hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:79
+msgid "overlay_lod hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:80
+msgid "use_decal_on_terrain hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:82
+msgid "custom_dem hint"
+msgstr ""
+
+#: src/O4_Config_Utils.py:83
+msgid "fill_nodata hint"
+msgstr ""
+
+#: src/O4_OSM_Utils.py:409
+msgid "    * Recycling OSM data from {cached_file_name}"
+msgstr ""
+
+#: src/O4_OSM_Utils.py:421
+msgid "    * Recycling OSM data for {query}"
+msgstr ""
+
+#: src/O4_OSM_Utils.py:425
+msgid "    * Downloading OSM data for {query}"
+msgstr ""
+
