@@ -8,6 +8,7 @@ TEMP_DIR = os.path.join(TESTS_DIR, 'tmp')
 MOCKS_DIR = os.path.join(TESTS_DIR, 'mocks')
 
 sys.path.insert(0, os.path.join(TESTS_DIR, '../src/'))
+sys.path.insert(0, os.path.join(TESTS_DIR, '../Providers/'))
 
 if not os.path.exists(TEMP_DIR):
     os.makedirs(TEMP_DIR)

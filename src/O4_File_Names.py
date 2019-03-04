@@ -171,14 +171,14 @@ def jpeg_file_name_from_attributes(til_x_left,til_y_top,zoomlevel,provider_code)
 def jpeg_file_dir_from_attributes(lat, lon, zoomlevel,provider): 
     if not provider:
         file_dir='.'
-    elif provider['imagery_dir']=='normal':
-        file_dir=os.path.join(Imagery_dir,short_latlon(lat,lon),provider['code']+'_'+str(zoomlevel))
-    elif provider['imagery_dir']=='grouped':
-        file_dir=os.path.join(Imagery_dir,long_latlon(lat,lon),provider['code']+'_'+str(zoomlevel))
-    elif provider['imagery_dir']=='code':
-        file_dir=os.path.join(Imagery_dir,provider['code'],provider['code']+'_'+str(zoomlevel))
+    elif provider.imagery_dir=='normal':
+        file_dir=os.path.join(Imagery_dir,short_latlon(lat,lon),provider.code+'_'+str(zoomlevel))
+    elif provider.imagery_dir=='grouped':
+        file_dir=os.path.join(Imagery_dir,long_latlon(lat,lon),provider.code+'_'+str(zoomlevel))
+    elif provider.imagery_dir=='code':
+        file_dir=os.path.join(Imagery_dir,provider.code,provider.code+'_'+str(zoomlevel))
     else:
-        file_dir=os.path.join(Imagery_dir,provider['imagery_dir'],provider['code']+'_'+str(zoomlevel))
+        file_dir=os.path.join(Imagery_dir,provider.imagery_dir,provider.code+'_'+str(zoomlevel))
     return file_dir
 ##############################################################################
 
