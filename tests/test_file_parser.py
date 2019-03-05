@@ -77,6 +77,20 @@ class TestImageProvider(unittest.TestCase):
 
         self.assertFalse(result)
 
+    def test_read_tile_matrix_sets_from_file(self):
+        lay_file = os.path.join(MOCKS_DIR, 'Providers/Netherlands/PDOK15.lay')
+        provider = O4Parser.ImageProvider()
+        result = provider.parse_from_file(lay_file)
+
+        self.assertTrue(result)
+        self.assertEqual(dict, type(provider.tilematrixset))
+        self.assertEqual(2, len(provider.tilematrixset))
+        self.assertEqual('nltilingschema', provider.tilematrixset['identifier'])
+        tile_matrices = provider.tilematrixset['tilematrices']
+        self.assertEqual(15, len(tile_matrices))
+        self.assertEqual('12288000.0', tile_matrices[0]['ScaleDenominator'])
+        self.assertEqual('256', tile_matrices[0]['TileWidth'])
+
 
 class TestCombinedProvider(unittest.TestCase):
 
@@ -212,18 +226,6 @@ class TestColorFilter(unittest.TestCase):
 
 
 class TestFileParser(unittest.TestCase):
-
-    def test_read_tile_matrix_sets_from_file(self):
-        file_path = os.path.join(MOCKS_DIR, 'Providers/Netherlands/capabilities_PDOK15.xml')
-        result = O4Parser.read_tile_matrix_sets_from_file(file_path)
-
-        self.assertEqual(list, type(result))
-        self.assertEqual(1, len(result))
-        self.assertEqual('nltilingschema', result[0]['identifier'])
-        tile_matrices = result[0]['tilematrices']
-        self.assertEqual(15, len(tile_matrices))
-        self.assertEqual('12288000.0', tile_matrices[0]['ScaleDenominator'])
-        self.assertEqual('256', tile_matrices[0]['TileWidth'])
 
     def test_read_xml_file(self):
         file_path = os.path.join(MOCKS_DIR, 'Providers/Netherlands/capabilities_PDOK15.xml')
