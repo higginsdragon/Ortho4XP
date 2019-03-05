@@ -240,6 +240,7 @@ def initialize_local_combined_providers_dict(tile):
                             extents_dict[new_extent.code] = new_extent
 
                             new_entry = O4Parser.CombinedEntry()
+                            new_entry.layer_code = combined_entry.layer_code
                             new_entry.extent_code = new_extent.code
                             new_combined_list.append(new_entry)
 
@@ -341,49 +342,60 @@ def initialize_local_combined_providers_dict(tile):
     return 1
 
 
-def has_data(bbox,extent_code,return_mask=False,mask_size=(4096,4096),is_sharp_resize=False,is_mask_layer=False):
+def has_data(bbox, extent_code, return_mask=False, mask_size=(4096, 4096), is_sharp_resize=False, is_mask_layer=False):
     """
     This function checks whether a given provider has data intersecting the given bbox.
     IMPORTANT: THE EXTENT AND THE BBOX NEED TO BE USING THE SAME REFERENCE FRAME (e.g. ESPG CODE)
     IMPORTANT TOO: (x0,y0) is the top-left corner, (x1,y1) is the bottom-right
 
-    :param bbox:
-    :param extent_code:
-    :param return_mask:
-    :param mask_size:
+    :param bbox: bounding box to check within
+    :param extent_code: extent code of the area (another bounding box)
+    :param return_mask: True/False default False
+    :param mask_size: tuple of size of mask image in pixels. default (4096, 4096)
     :param is_sharp_resize: determined if the upsamplique of the extent mask is nearest (good when sharp transitions
                             are) or bicubic (good in all other cases)
     :param is_mask_layer: (assuming EPSG:4326) allows to "multiply" extent masks with water masks, this is a smooth
                           alternative for the old sea_texture_params.
     :return: False or True or (in the latter case) the mask image over the bbox and properly resized according
     """
-    (x0,y0,x1,y1)=bbox
+    (x0, y0, x1, y1) = bbox
     try:
         # global layers need special treatment 
-        if extent_code=='global' and (not is_mask_layer or (x1-x0)==1):
-            return (not return_mask) or Image.new('L',mask_size,'white')
-        if extent_code[0]=='!': 
-            extent_code=extent_code[1:]
-            negative=True 
+        if extent_code == 'global' and (not is_mask_layer or (x1 - x0) == 1):
+            return (not return_mask) or Image.new('L', mask_size, 'white')
+
+        if extent_code[0] == '!':
+            extent_code = extent_code[1:]
+            negative = True
         else:
-            negative=False 
-        (xmin,ymin,xmax,ymax)=extents_dict[extent_code].mask_bounds if extent_code!='global' else (-180,-90,180,90)
-        if x0>xmax or x1<xmin or y0<ymin or y1>ymax:
+            negative = False
+
+        if extent_code != 'global':
+            (xmin, ymin, xmax, ymax) = extents_dict[extent_code].mask_bounds
+        else:
+            (xmin, ymin, xmax, ymax) = (-180, -90, 180, 90)
+
+        if x0 > xmax or x1 < xmin or y0 < ymin or y1 > ymax:
             return negative
-        if (not is_mask_layer) or (x1-x0)==1:
-            mask_im=Image.open(os.path.join(FNAMES.Extent_dir,extents_dict[extent_code].directory,extents_dict[extent_code].code+".png")).convert("L")
-            (sizex,sizey)=mask_im.size
-            pxx0=int((x0-xmin)/(xmax-xmin)*sizex)
-            pxx1=int((x1-xmin)/(xmax-xmin)*sizex)
-            pxy0=int((ymax-y0)/(ymax-ymin)*sizey)
-            pxy1=int((ymax-y1)/(ymax-ymin)*sizey)
+
+        if (not is_mask_layer) or (x1 - x0) == 1:
+            mask_im = Image.open(os.path.join(FNAMES.Extent_dir, extents_dict[extent_code].directory,
+                                              extents_dict[extent_code].code + '.png')).convert('L')
+            (sizex, sizey) = mask_im.size
+            pxx0 = int((x0 - xmin) / (xmax - xmin) * sizex)
+            pxx1 = int((x1 - xmin) / (xmax - xmin) * sizex)
+            pxy0 = int((ymax - y0) / (ymax - ymin) * sizey)
+            pxy1 = int((ymax - y1) / (ymax - ymin) * sizey)
+
             if not return_mask:
-                pxx0=max(-1,pxx0)
-                pxx1=min(sizex,pxx1)
-                pxy0=max(-1,pxy0)
-                pxy1=min(sizey,pxy1)
-            mask_im=mask_im.crop((pxx0,pxy0,pxx1,pxy1))
-            if negative: mask_im=ImageOps.invert(mask_im)
+                pxx0 = max(-1, pxx0)
+                pxx1 = min(sizex, pxx1)
+                pxy0 = max(-1, pxy0)
+                pxy1 = min(sizey, pxy1)
+
+            mask_im = mask_im.crop((pxx0, pxy0, pxx1, pxy1))
+            if negative:
+                mask_im = ImageOps.invert(mask_im)
             if not mask_im.getbbox():
                 return False
             if not return_mask:
@@ -391,63 +403,70 @@ def has_data(bbox,extent_code,return_mask=False,mask_size=(4096,4096),is_sharp_r
             if is_sharp_resize:
                 return mask_im.resize(mask_size)
             else:
-                return mask_im.resize(mask_size,Image.BICUBIC)
+                return mask_im.resize(mask_size, Image.BICUBIC)
         else:
             # following code only visited when is_mask_layer is True
             # in which case it is passed as (lat,lon,mask_zl)
             # check if sea mask file exists
-            (lat,lon, mask_zl)=is_mask_layer
-            (m_tilx,m_tily)=GEO.wgs84_to_orthogrid((y0+y1)/2,(x0+x1)/2,mask_zl)
-            if os.path.isdir(os.path.join(FNAMES.mask_dir(lat,lon),"Combined_imagery")):
-               check_dir=os.path.join(FNAMES.mask_dir(lat,lon),"Combined_imagery")
+            (lat, lon, mask_zl) = is_mask_layer
+            (m_tile_x, m_tile_y) = GEO.wgs84_to_orthogrid((y0 + y1) / 2, (x0 + x1) / 2, mask_zl)
+            if os.path.isdir(os.path.join(FNAMES.mask_dir(lat, lon), 'Combined_imagery')):
+                check_dir = os.path.join(FNAMES.mask_dir(lat, lon), 'Combined_imagery')
             else:
-               check_dir=FNAMES.mask_dir(lat,lon)
-            if not os.path.isfile(os.path.join(check_dir,FNAMES.legacy_mask(m_tilx,m_tily))):
+                check_dir = FNAMES.mask_dir(lat, lon)
+            if not os.path.isfile(os.path.join(check_dir, FNAMES.legacy_mask(m_tile_x, m_tile_y))):
                 return False
             # build extent mask_im
-            if extent_code!='global':
-                mask_im=Image.open(os.path.join(FNAMES.Extent_dir,extents_dict[extent_code].directory,extents_dict[extent_code].code+".png")).convert("L")
-                (sizex,sizey)=mask_im.size
-                pxx0=int((x0-xmin)/(xmax-xmin)*sizex)
-                pxx1=int((x1-xmin)/(xmax-xmin)*sizex)
-                pxy0=int((ymax-y0)/(ymax-ymin)*sizey)
-                pxy1=int((ymax-y1)/(ymax-ymin)*sizey)
-                mask_im=mask_im.crop((pxx0,pxy0,pxx1,pxy1))
-                if negative: mask_im=ImageOps.invert(mask_im)
+            if extent_code != 'global':
+                mask_im = Image.open(os.path.join(FNAMES.Extent_dir, extents_dict[extent_code].directory,
+                                                  extents_dict[extent_code].code + '.png')).convert('L')
+                (sizex, sizey) = mask_im.size
+                pxx0 = int((x0 - xmin) / (xmax - xmin) * sizex)
+                pxx1 = int((x1 - xmin) / (xmax - xmin) * sizex)
+                pxy0 = int((ymax - y0) / (ymax - ymin) * sizey)
+                pxy1 = int((ymax - y1) / (ymax - ymin) * sizey)
+                mask_im = mask_im.crop((pxx0, pxy0, pxx1, pxy1))
+
+                if negative:
+                    mask_im = ImageOps.invert(mask_im)
                 if not mask_im.getbbox():
                     return False
                 if is_sharp_resize:
-                    mask_im=mask_im.resize(mask_size)
+                    mask_im = mask_im.resize(mask_size)
                 else:
-                    mask_im=mask_im.resize(mask_size,Image.BICUBIC)
+                    mask_im = mask_im.resize(mask_size, Image.BICUBIC)
             else:
-                mask_im=Image.new('L',mask_size,'white')
-            # build sea mask_im2    
-            (ymax,xmin)=GEO.gtile_to_wgs84(m_tilx,m_tily,mask_zl)
-            (ymin,xmax)=GEO.gtile_to_wgs84(m_tilx+16,m_tily+16,mask_zl)
-            mask_im2=Image.open(os.path.join(check_dir,FNAMES.legacy_mask(m_tilx,m_tily))).convert("L")
-            (sizex,sizey)=mask_im2.size
-            pxx0=int((x0-xmin)/(xmax-xmin)*sizex)
-            pxx1=int((x1-xmin)/(xmax-xmin)*sizex)
-            pxy0=int((ymax-y0)/(ymax-ymin)*sizey)
-            pxy1=int((ymax-y1)/(ymax-ymin)*sizey)
-            mask_im2=mask_im2.crop((pxx0,pxy0,pxx1,pxy1)).resize(mask_size,Image.BICUBIC)
-            # invert it 
-            mask_array2=255-numpy.array(mask_im2,dtype=numpy.uint8)
+                mask_im = Image.new('L', mask_size, 'white')
+
+            # build sea mask_im2
+            (ymax, xmin) = GEO.gtile_to_wgs84(m_tile_x, m_tile_y, mask_zl)
+            (ymin, xmax) = GEO.gtile_to_wgs84(m_tile_x + 16, m_tile_y + 16, mask_zl)
+            mask_im2 = Image.open(os.path.join(check_dir, FNAMES.legacy_mask(m_tile_x, m_tile_y))).convert("L")
+            (sizex, sizey) = mask_im2.size
+            pxx0 = int((x0 - xmin) / (xmax - xmin) * sizex)
+            pxx1 = int((x1 - xmin) / (xmax - xmin) * sizex)
+            pxy0 = int((ymax - y0) / (ymax - ymin) * sizey)
+            pxy1 = int((ymax - y1) / (ymax - ymin) * sizey)
+            mask_im2 = mask_im2.crop((pxx0, pxy0, pxx1, pxy1)).resize(mask_size, Image.BICUBIC)
+
+            # invert it
+            mask_array2 = 255 - numpy.array(mask_im2, dtype=numpy.uint8)
+
             # let full sea down (if you wish to...)
             # mask_array2[mask_array2==255]=0
-            # combine (multiply) both
-            mask_array=numpy.array(mask_im,dtype=numpy.uint16)
-            mask_array=(mask_array*mask_array2/255).astype(numpy.uint8)
+            #  combine (multiply) both
+            mask_array = numpy.array(mask_im, dtype=numpy.uint16)
+            mask_array = (mask_array * mask_array2 / 255).astype(numpy.uint8)
             mask_im = Image.fromarray(mask_array).convert('L')
+
             if not mask_im.getbbox():
                 return False
             if not return_mask:
                 return True
             return mask_im
     except Exception as e:
-        UI.vprint(1,"Could not test coverage of ",extent_code," !!!")
-        UI.vprint(2,e)
+        UI.vprint(1, _('Could not test coverage of {extent_code}!!!').format(extent_code=extent_code))
+        UI.vprint(2, e)
         return False
 
 

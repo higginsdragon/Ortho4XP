@@ -104,8 +104,8 @@ class TestCombinedProvider(unittest.TestCase):
         self.assertEqual(2, len(combined_provider.combined_list))
         self.assertEqual('SE2', combined_provider.combined_list[0].layer_code)
         self.assertEqual('high', combined_provider.combined_list[0].priority)
-        self.assertEqual('PDOK15', combined_provider.combined_list[1].layer_code)
-        self.assertEqual('Tirol', combined_provider.combined_list[1].extent_code)
+        self.assertEqual('NIB', combined_provider.combined_list[1].layer_code)
+        self.assertEqual('Norway', combined_provider.combined_list[1].extent_code)
 
     @mock.patch('O4_UI_Utils.lvprint')
     def test_combined_provider_parse_from_file_bad_priority(self, lvprint_mock):
