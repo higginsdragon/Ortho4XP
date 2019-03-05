@@ -546,23 +546,23 @@ def http_request_to_image(width,height,url,request_headers,http_session):
 ###############################################################################################################################
 def get_wms_image(bbox,width,height,provider,http_session):
     request_headers=None 
-    if has_URL and provider['code'] in URL.custom_url_list:
+    if has_URL and provider.code in URL.custom_url_list:
         (url,request_headers)=URL.custom_wms_request(bbox,width,height,provider)
     else:
         (minx,maxy,maxx,miny)=bbox
-        if provider['wms_version'].split('.')[1]=="3":
+        if provider.wms_version.split('.')[1]=="3":
             bbox_string=str(miny)+','+str(minx)+','+str(maxy)+','+str(maxx)
             _RS='CRS'
         else:
             bbox_string=str(minx)+','+str(miny)+','+str(maxx)+','+str(maxy) 
             _RS='SRS' 
-        url=provider['url_prefix']+"SERVICE=WMS&VERSION="+provider['wms_version']+"&FORMAT=image/"+provider['image_type']+\
-                "&REQUEST=GetMap&LAYERS="+provider['layers']+"&STYLES=&"+_RS+"=EPSG:"+str(provider['epsg_code'])+\
+        url=provider.url_prefix+"SERVICE=WMS&VERSION="+provider.wms_version+"&FORMAT=image/"+provider.image_type+\
+                "&REQUEST=GetMap&LAYERS="+provider.layers+"&STYLES=&"+_RS+"=EPSG:"+str(provider.epsg_code)+\
                 "&WIDTH="+str(width)+"&HEIGHT="+str(height)+\
                 "&BBOX="+bbox_string 
     if not request_headers:
         if 'fake_headers' in provider:
-            request_headers=provider['fake_headers']
+            request_headers=provider.fake_headers
         else:
             request_headers=request_headers_generic
     (success,data)=http_request_to_image(width,height,url,request_headers,http_session)
@@ -578,42 +578,42 @@ def get_wmts_image(tilematrix,til_x,til_y,provider,http_session):
   down_sample=0
   while True:
     request_headers=None  
-    if has_URL and provider['code'] in URL.custom_url_list:
+    if has_URL and provider.code in URL.custom_url_list:
         (url,request_headers)=URL.custom_tms_request(tilematrix,til_x,til_y,provider)     
-    elif provider['request_type']=='tms': # TMS
-        url=provider['url_template'].replace('{zoom}',str(tilematrix))
+    elif provider.request_type=='tms': # TMS
+        url=provider.url_template.replace('{zoom}',str(tilematrix))
         url=url.replace('{x}',str(til_x)) 
         url=url.replace('{y}',str(til_y))
         url=url.replace('{|y|}',str(abs(til_y)-1))
         url=url.replace('{-y}',str(2**tilematrix-1-til_y))
         url=url.replace('{quadkey}',GEO.gtile_to_quadkey(til_x,til_y,tilematrix))
-        url=url.replace('{xcenter}',str((til_x+0.5)*provider['resolutions'][tilematrix]*provider['tile_size']+provider['top_left_corner'][tilematrix][0]))
-        url=url.replace('{ycenter}',str(-1*(til_y+0.5)*provider['resolutions'][tilematrix]*provider['tile_size']+provider['top_left_corner'][tilematrix][1]))
-        url=url.replace('{size}',str(int(provider['resolutions'][tilematrix]*provider['tile_size'])))
+        url=url.replace('{xcenter}',str((til_x+0.5)*provider.resolutions[tilematrix]*provider.tile_size+provider.top_left_corner[tilematrix][0]))
+        url=url.replace('{ycenter}',str(-1*(til_y+0.5)*provider.resolutions[tilematrix]*provider.tile_size+provider.top_left_corner[tilematrix][1]))
+        url=url.replace('{size}',str(int(provider.resolutions[tilematrix]*provider.tile_size)))
         if '{switch:' in url:
             (url_0,tmp)=url.split('{switch:')
             (tmp,url_2)=tmp.split('}')
             server_list=tmp.split(',')
             url_1=random.choice(server_list).strip()
             url=url_0+url_1+url_2 
-    elif provider['request_type']=='wmts': # WMTS
-        url=provider['url_prefix']+"&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER="+\
-            provider['layers']+"&STYLE=&FORMAT=image/"+provider['image_type']+"&TILEMATRIXSET="+provider['tilematrixset']['identifier']+\
-            "&TILEMATRIX="+provider['tilematrixset']['tilematrices'][tilematrix]['identifier']+"&TILEROW="+str(til_y)+"&TILECOL="+str(til_x)
-    elif provider['request_type']=='local_tms':  # LOCAL TMS
-        url_local=provider['url_template'].replace('{x}',str(5*til_x).zfill(4)) # ! Too much specific, needs to be changed by a x,y-> file_name lambda fct
+    elif provider.request_type=='wmts': # WMTS
+        url=provider.url_prefix+"&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER="+\
+            provider.layers+"&STYLE=&FORMAT=image/"+provider.image_type+"&TILEMATRIXSET="+provider.tilematrixset['identifier']+\
+            "&TILEMATRIX="+provider.tilematrixset['tilematrices'][tilematrix]['identifier']+"&TILEROW="+str(til_y)+"&TILECOL="+str(til_x)
+    elif provider.request_type=='local_tms':  # LOCAL TMS
+        url_local=provider.url_template.replace('{x}',str(5*til_x).zfill(4)) # ! Too much specific, needs to be changed by a x,y-> file_name lambda fct
         url_local=url_local.replace('{y}',str(-5*til_y).zfill(4))
         if os.path.isfile(url_local):
             return (1,Image.open(url_local))
         else:
             UI.vprint(2,"! File ",url_local,"absent, using white texture instead !")
-            return (0,Image.new('RGB',(provider['tile_size'],provider['tile_size']),'white'))
+            return (0,Image.new('RGB',(provider.tile_size,provider.tile_size),'white'))
     if not request_headers:
         if 'fake_headers' in provider:
-            request_headers=provider['fake_headers']
+            request_headers=provider.fake_headers
         else:
             request_headers=request_headers_generic
-    width=height=provider['tile_size'] 
+    width=height=provider.tile_size
     (success,data)=http_request_to_image(width,height,url,request_headers,http_session)
     if success and not down_sample: 
         return (success,data) 
@@ -624,7 +624,7 @@ def get_wmts_image(tilematrix,til_x,til_y,provider,http_session):
         y1=y0+height//(2**down_sample)
         return (success,data.crop((x0,y0,x1,y1)).resize((width,height),Image.BICUBIC)) 
     elif '[404]' in data:
-        if ('grid_type' not in provider) or (provider['grid_type']!='webmercator'):
+        if ('grid_type' not in provider) or (provider.grid_type!='webmercator'):
             return (0,Image.new('RGB',(width,height),'white'))
         til_x=til_x//2
         til_y=til_y//2
@@ -659,7 +659,7 @@ def build_texture_from_tilbox(tilbox,zoomlevel,provider,progress=None):
     (til_x_min,til_y_min,til_x_max,til_y_max)=tilbox
     parts_x=til_x_max-til_x_min
     parts_y=til_y_max-til_y_min
-    width=height=provider['tile_size']
+    width=height=provider.tile_size
     big_image=Image.new('RGB',(width*parts_x,height*parts_y)) 
     # we set-up the queue of downloads
     http_session=requests.Session() 
@@ -672,7 +672,7 @@ def build_texture_from_tilbox(tilbox,zoomlevel,provider,progress=None):
             download_queue.put(fargs)
     # then the number of workers
     if 'max_threads' in provider: 
-        max_threads=int(provider['max_threads'])
+        max_threads=provider.max_threads
     else:
         max_threads=16
     # and finally activate them
@@ -688,13 +688,13 @@ def build_texture_from_bbox_and_size(t_bbox,t_epsg,t_size,provider):
     warp_needed=crop_needed=False
     (ulx,uly,lrx,lry)=t_bbox
     (t_sizex,t_sizey)=t_size
-    if provider['epsg_code']=='3857': 
+    if provider.epsg_code=='3857':
         s_ulx,s_uly,s_lrx,s_lry=ulx,uly,lrx,lry
     else:
-        (s_ulx,s_uly)=GEO.transform(t_epsg,provider['epsg_code'],ulx,uly)
-        (s_urx,s_ury)=GEO.transform(t_epsg,provider['epsg_code'],lrx,uly)
-        (s_llx,s_lly)=GEO.transform(t_epsg,provider['epsg_code'],ulx,lry)
-        (s_lrx,s_lry)=GEO.transform(t_epsg,provider['epsg_code'],lrx,lry)
+        (s_ulx,s_uly)=GEO.transform(t_epsg,provider.epsg_code,ulx,uly)
+        (s_urx,s_ury)=GEO.transform(t_epsg,provider.epsg_code,lrx,uly)
+        (s_llx,s_lly)=GEO.transform(t_epsg,provider.epsg_code,ulx,lry)
+        (s_lrx,s_lry)=GEO.transform(t_epsg,provider.epsg_code,lrx,lry)
         (g_ulx,g_uly)=GEO.transform(t_epsg,'4326',ulx,uly)
         (g_lrx,g_lry)=GEO.transform(t_epsg,'4326',lrx,lry)
         if s_ulx!=s_llx or s_uly!=s_ury or s_lrx!=s_urx or s_lly!=s_lry or (g_uly-g_lry)>0.08:
@@ -705,20 +705,20 @@ def build_texture_from_bbox_and_size(t_bbox,t_epsg,t_size,provider):
             warp_needed=True
     x_range=s_lrx-s_ulx
     y_range=s_uly-s_lry
-    if provider['request_type']=='wms':
-        wms_size=int(provider['wms_size'])
+    if provider.request_type=='wms':
+        wms_size=int(provider.wms_size)
         parts_x=int(ceil(t_sizex/wms_size))
         width=wms_size
         parts_y=int(ceil(t_sizey/wms_size))
         height=wms_size
-    elif provider['request_type'] in ('wmts','tms','local_tms'):
+    elif provider.request_type in ('wmts','tms','local_tms'):
         asked_resol=max(x_range/t_sizex,y_range/t_sizey)
-        wmts_tilematrix=numpy.argmax(provider['resolutions']<=asked_resol*1.1)
-        wmts_resol=provider['resolutions'][wmts_tilematrix]   # in s_epsg unit per pix !
+        wmts_tilematrix=numpy.argmax(provider.resolutions<=asked_resol*1.1)
+        wmts_resol=provider.resolutions[wmts_tilematrix]   # in s_epsg unit per pix !
         UI.vprint(3,"Asked resol:",asked_resol,"WMTS resol:",wmts_resol)
-        width=height=provider['tile_size']
+        width=height=provider.tile_size
         cell_size=wmts_resol*width
-        [wmts_x0,wmts_y0]=provider['top_left_corner'][wmts_tilematrix]  
+        [wmts_x0,wmts_y0]=provider.top_left_corner[wmts_tilematrix]
         til_x_min=int((s_ulx-wmts_x0)//cell_size)
         til_x_max=int((s_lrx-wmts_x0)//cell_size)
         til_y_min=int((wmts_y0-s_uly)//cell_size)
@@ -753,29 +753,29 @@ def build_texture_from_bbox_and_size(t_bbox,t_epsg,t_size,provider):
         for montx in range(0,parts_x):
             x0=montx*width
             y0=monty*height
-            if provider['request_type']=='wms':
+            if provider.request_type=='wms':
                 p_ulx=s_ulx+montx*x_range/parts_x
                 p_uly=s_uly-monty*y_range/parts_y
                 p_lrx=p_ulx+x_range/parts_x
                 p_lry=p_uly-y_range/parts_y
                 p_bbox=[p_ulx,p_uly,p_lrx,p_lry]
                 fargs=[p_bbox[:],width,height,provider,big_image,x0,y0,http_session]
-            elif provider['request_type'] in ['wmts','tms','local_tms']:
+            elif provider.request_type in ['wmts','tms','local_tms']:
                 fargs=[wmts_tilematrix,til_x_min+montx,til_y_min+monty,provider,big_image,x0,y0,http_session,subt_size]
             download_queue.put(fargs)
     # We execute the downloads and subimage pastes
     if 'max_threads' in provider: 
-        max_threads=int(provider['max_threads'])
+        max_threads=provider.max_threads
     else:
         max_threads=16
-    if provider['request_type']=='wms':
+    if provider.request_type=='wms':
         success=parallel_execute(get_and_paste_wms_part,download_queue,max_threads)
-    elif provider['request_type'] in ['wmts','tms','local_tms']:
+    elif provider.request_type in ['wmts','tms','local_tms']:
         success=parallel_execute(get_and_paste_wmts_part,download_queue,max_threads)
     # We modify big_image if necessary
     if warp_needed:
         UI.vprint(3,"Warp needed")
-        big_image=gdalwarp_alternative((s_ulx,s_uly,s_lrx,s_lry),provider['epsg_code'],big_image,t_bbox,t_epsg,t_size)
+        big_image=gdalwarp_alternative((s_ulx,s_uly,s_lrx,s_lry),provider.epsg_code,big_image,t_bbox,t_epsg,t_size)
     elif crop_needed:
         UI.vprint(3,"Crop needed")
         big_image=big_image.crop((crop_x0,crop_y0,crop_x1,crop_y1))
