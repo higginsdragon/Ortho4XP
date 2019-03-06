@@ -281,7 +281,7 @@ class ImageProvider:
             'ows': 'http://www.opengis.net/ows/1.1'
         }
 
-        if not tm_parsed or isinstance(tm_parsed, int):
+        if not tm_parsed:
             return False
 
         xml_matrix_sets = tm_parsed.findall('wmts:Contents/wmts:TileMatrixSet', xml_namespaces)

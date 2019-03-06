@@ -470,80 +470,86 @@ def has_data(bbox, extent_code, return_mask=False, mask_size=(4096, 4096), is_sh
         return False
 
 
-###############################################################################################################################
-#
-#  PART II : Methods to download and build textures
-#
-###############################################################################################################################
+def http_request_to_image(url, request_headers, http_session):
+    UI.vprint(3, _('HTTP request issued : {url} \nRequest headers : {headers}').
+              format(url=url, headers=request_headers))
+    tentative_request = 0
+    tentative_image = 0
+    stopped_text = _('Stopped')
 
-###############################################################################################################################
-def http_request_to_image(width,height,url,request_headers,http_session):
-    UI.vprint(3,"HTTP request issued :",url,"\nRequest headers :",request_headers)
-    tentative_request=0
-    tentative_image=0
-    r=False
+    r = False
     while True:
         try:
             if request_headers:
-                r=http_session.get(url, timeout=http_timeout,headers=request_headers) 
+                r = http_session.get(url, timeout=http_timeout, headers=request_headers)
             else:
-                r=http_session.get(url, timeout=http_timeout) 
+                r = http_session.get(url, timeout=http_timeout)
             status_code = str(r)
-            # Bing white image with small camera or Arcgis no data yet => try to downsample to lower ZL
-            if ('Content-Length' in r.headers) and int(r.headers['Content-Length'])<=2521:
-                if (r.headers['Content-Length']=='1033') and  ('virtualearth' in url):
-                    UI.vprint(3,url,r.headers)
-                    return (0,'[404]')
-                if (r.headers['Content-Length']=='2521') and  ('arcgisonline' in url):
-                    UI.vprint(3,url,r.headers)
-                    return (0,'[404]')
-            if ('[200]' in status_code) and ('image' in r.headers['Content-Type']):
+
+            # Bing white image with small camera or Arcgis no data yet => try to down-sample to lower ZL
+            if 'Content-Length' in r.headers and int(r.headers['Content-Length']) <= 2521:
+                if int(r.headers['Content-Length']) == 1033 and 'virtualearth' in url:
+                    UI.vprint(3, url, r.headers)
+                    return False, 404
+                if int(r.headers['Content-Length']) == 2521 and 'arcgisonline' in url:
+                    UI.vprint(3, url, r.headers)
+                    return False, 404
+
+            if r.status_code == 200 and 'image' in r.headers['Content-Type']:
                 try:
-                    small_image=Image.open(io.BytesIO(r.content))
-                    return (1,small_image)
-                except:
-                    UI.vprint(2,"Server said 'OK', but the received image was corrupted.")
-                    UI.vprint(3,url,r.headers)
-            elif ('[404]' in status_code):
-                UI.vprint(2,"Server said 'Not Found'")
-                UI.vprint(3,url,r.headers)
+                    small_image = Image.open(io.BytesIO(r.content))
+                    return 1, small_image
+                except TypeError:
+                    UI.vprint(2, _('Server said "OK", but the received image was corrupted.'))
+                    UI.vprint(3, url, r.headers)
+            elif r.status_code == 404:
+                UI.vprint(2, _('Server said "Not Found"'))
+                UI.vprint(3, url, r.headers)
                 break
-            elif ('[200]' in status_code):
-                UI.vprint(2,"Server said 'OK' but sent us the wrong Content-Type.")
-                UI.vprint(3,url,r.headers,r.content)
+            elif r.status_code == 200:
+                UI.vprint(2, _('Server said "OK" but sent us the wrong Content-Type.'))
+                UI.vprint(3, url, r.headers, r.content)
                 break
-            elif ('[403]' in status_code):
-                UI.vprint(2,"Server said 'Forbidden' ! (IP banned?)")
-                UI.vprint(3,url,r.headers,r.content)
+            elif r.status_code == 403:
+                UI.vprint(2, _("Server said 'Forbidden' ! (IP banned?)"))
+                UI.vprint(3, url, r.headers, r.content)
                 break
-            elif ('[5' in status_code):      
-                UI.vprint(2,"Server said 'Internal Error'.",status_code)
+            elif r.status_code >= 500:
+                UI.vprint(2, _("Server said 'Internal Error'."), r.status_code)
                 if not check_tms_response:
                     break 
                 time.sleep(2)
             else:
-                UI.vprint(2,"Unmanaged Server answer:",status_code)
-                UI.vprint(3,url,r.headers)
+                UI.vprint(2, _("Un-managed Server answer: {status}").format(status=status_code))
+                UI.vprint(3, url, r.headers)
                 break
-            if UI.red_flag: return (0,'Stopped')
-            tentative_image+=1  
-        except requests.exceptions.RequestException as e: 
-            status_code='Connection failure'   
-            UI.vprint(2,"Server could not be connected, retrying in 2 secs")
-            UI.vprint(3,e)
+
+            if UI.red_flag:
+                return False, stopped_text
+
+            tentative_image += 1
+
+        except requests.exceptions.RequestException as e:
+            UI.vprint(2, _('Server could not be connected, retrying in 2 secs'))
+            UI.vprint(3, e)
             if not check_tms_response:
                 break
-            # trying a new session ? 
-            http_session=requests.Session()
-            time.sleep(2)
-            if UI.red_flag: return (0,'Stopped')
-            tentative_request+=1
-        if tentative_request==max_connect_retries or tentative_image==max_baddata_retries: 
-            break 
-    return (0,status_code)
-###############################################################################################################################
 
-###############################################################################################################################
+            # trying a new session ?
+            http_session = requests.Session()
+            time.sleep(2)
+
+            if UI.red_flag:
+                return False, stopped_text
+
+            tentative_request += 1
+
+        if tentative_request == max_connect_retries or tentative_image == max_baddata_retries:
+            break 
+
+    return False, r.status_code
+
+
 def get_wms_image(bbox,width,height,provider,http_session):
     request_headers=None 
     if has_URL and provider.code in URL.custom_url_list:
@@ -565,7 +571,7 @@ def get_wms_image(bbox,width,height,provider,http_session):
             request_headers=provider.fake_headers
         else:
             request_headers=request_headers_generic
-    (success,data)=http_request_to_image(width,height,url,request_headers,http_session)
+    (success,data)=http_request_to_image(url,request_headers,http_session)
     if success: 
         return (1,data) 
     else:
@@ -614,7 +620,7 @@ def get_wmts_image(tilematrix,til_x,til_y,provider,http_session):
         else:
             request_headers=request_headers_generic
     width=height=provider.tile_size
-    (success,data)=http_request_to_image(width,height,url,request_headers,http_session)
+    (success,data)=http_request_to_image(url,request_headers,http_session)
     if success and not down_sample: 
         return (success,data) 
     elif success and down_sample:
