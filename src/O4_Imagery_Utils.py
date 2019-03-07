@@ -31,6 +31,7 @@ import O4_Mesh_Utils as MESH
 import O4_OSM_Utils as OSM
 import O4_Mask_Utils as MASK
 from O4_Parallel_Utils import parallel_execute
+from typing import Tuple, Type, Union
 import gettext  # for future localization
 _ = gettext.gettext
 
@@ -75,7 +76,7 @@ local_combined_providers_dict = {}
 
 # The initialize functions place providers, extents, and color filters into easily-accessible globals
 # for all functions in the module.
-def initialize_extents_dict():
+def initialize_extents_dict() -> None:
     """
     Looks for .ext files (in Extents/) and parses them all into module's extents_dict variable.
     :return: None
@@ -95,7 +96,7 @@ def initialize_extents_dict():
             extents_dict[extent.code] = extent
 
 
-def initialize_color_filters_dict():
+def initialize_color_filters_dict() -> None:
     """
     Looks for .flt files (in Filters/) and parses them all into module's color_filters_dict variable.
     :return: None
@@ -109,7 +110,7 @@ def initialize_color_filters_dict():
         color_filters_dict[color_filter.code] = color_filter.filters
 
 
-def initialize_providers_dict():
+def initialize_providers_dict() -> None:
     """
     Looks for .lay files (in Providers/) and parses them all into module's providers_dict variable.
     :return: None
@@ -133,7 +134,7 @@ def initialize_providers_dict():
             providers_dict[provider.code] = provider
 
 
-def initialize_combined_providers_dict():
+def initialize_combined_providers_dict() -> None:
     """
     Looks for .comb files (in Providers/) and parses them all into module's combined_providers_dict variable.
     :return: None
@@ -196,12 +197,12 @@ def initialize_combined_providers_dict():
                   format(provider_code=combined_provider.code))
 
 
-def initialize_local_combined_providers_dict(tile):
+def initialize_local_combined_providers_dict(tile) -> bool:
     """
     Selects from the list of providers the only ones whose coverage intersects the given tile and creates
     masks for the necessary providers. Also places data into global local_combined_providers_dict
     :param tile: Tile object
-    :return: True/1 or False/0
+    :return: True or False
     """
     global local_combined_providers_dict, extents_dict
     local_combined_providers_dict = {}
@@ -272,7 +273,7 @@ def initialize_local_combined_providers_dict(tile):
                                 UI.vprint(0, _('Error: missing OSM data for extent code {name}. Exiting.').
                                           format(name=name))
                                 del extents_dict[new_extent.code]
-                                return 0
+                                return False
 
                             osm_layer.update_dicosm(cached_file_name)
                             multipolygon_area = OSM.OSM_to_MultiPolygon(osm_layer, 0, 0)
@@ -337,9 +338,9 @@ def initialize_local_combined_providers_dict(tile):
             else:
                 UI.vprint(1, _('Combined provider {pcode} did not contain data for this tile. Exiting.').
                           format(pcode=provider_code))
-                return 0
+                return False
     UI.vprint(2, _('    Done.'))
-    return 1
+    return True
 
 
 def has_data(bbox, extent_code, return_mask=False, mask_size=(4096, 4096), is_sharp_resize=False, is_mask_layer=False):
@@ -350,7 +351,7 @@ def has_data(bbox, extent_code, return_mask=False, mask_size=(4096, 4096), is_sh
 
     :param bbox: bounding box to check within
     :param extent_code: extent code of the area (another bounding box)
-    :param return_mask: True/False default False
+    :param return_mask: True/False default FalseO4Parser.ImageProvider
     :param mask_size: tuple of size of mask image in pixels. default (4096, 4096)
     :param is_sharp_resize: determined if the upsamplique of the extent mask is nearest (good when sharp transitions
                             are) or bicubic (good in all other cases)
@@ -470,7 +471,7 @@ def has_data(bbox, extent_code, return_mask=False, mask_size=(4096, 4096), is_sh
         return False
 
 
-def http_request_to_image(url, request_headers, http_session):
+def http_request_to_image(url: str, request_headers: Union[dict, None], http_session: any) -> Tuple[bool, any]:
     UI.vprint(3, _('HTTP request issued : {url} \nRequest headers : {headers}').
               format(url=url, headers=request_headers))
     tentative_request = 0
@@ -498,7 +499,7 @@ def http_request_to_image(url, request_headers, http_session):
             if r.status_code == 200 and 'image' in r.headers['Content-Type']:
                 try:
                     small_image = Image.open(io.BytesIO(r.content))
-                    return 1, small_image
+                    return True, small_image
                 except TypeError:
                     UI.vprint(2, _('Server said "OK", but the received image was corrupted.'))
                     UI.vprint(3, url, r.headers)
@@ -550,123 +551,151 @@ def http_request_to_image(url, request_headers, http_session):
     return False, r.status_code
 
 
-def get_wms_image(bbox,width,height,provider,http_session):
-    request_headers=None 
-    if has_URL and provider.code in URL.custom_url_list:
-        (url,request_headers)=URL.custom_wms_request(bbox,width,height,provider)
-    else:
-        (minx,maxy,maxx,miny)=bbox
-        if provider.wms_version.split('.')[1]=="3":
-            bbox_string=str(miny)+','+str(minx)+','+str(maxy)+','+str(maxx)
-            _RS='CRS'
-        else:
-            bbox_string=str(minx)+','+str(miny)+','+str(maxx)+','+str(maxy) 
-            _RS='SRS' 
-        url=provider.url_prefix+"SERVICE=WMS&VERSION="+provider.wms_version+"&FORMAT=image/"+provider.image_type+\
-                "&REQUEST=GetMap&LAYERS="+provider.layers+"&STYLES=&"+_RS+"=EPSG:"+str(provider.epsg_code)+\
-                "&WIDTH="+str(width)+"&HEIGHT="+str(height)+\
-                "&BBOX="+bbox_string 
-    if not request_headers:
-        if 'fake_headers' in provider:
-            request_headers=provider.fake_headers
-        else:
-            request_headers=request_headers_generic
-    (success,data)=http_request_to_image(url,request_headers,http_session)
-    if success: 
-        return (1,data) 
-    else:
-        return (0,Image.new('RGB',(width,height),'white'))
-###############################################################################################################################
+def get_wms_image(bbox: tuple,
+                  width: int,
+                  height: int,
+                  provider: any,
+                  http_session: any) -> Tuple[bool, any]:
+    request_headers = None
 
-###############################################################################################################################
-def get_wmts_image(tilematrix,til_x,til_y,provider,http_session):
-  til_x_orig,til_y_orig=til_x,til_y
-  down_sample=0
-  while True:
-    request_headers=None  
     if has_URL and provider.code in URL.custom_url_list:
-        (url,request_headers)=URL.custom_tms_request(tilematrix,til_x,til_y,provider)     
-    elif provider.request_type=='tms': # TMS
-        url=provider.url_template.replace('{zoom}',str(tilematrix))
-        url=url.replace('{x}',str(til_x)) 
-        url=url.replace('{y}',str(til_y))
-        url=url.replace('{|y|}',str(abs(til_y)-1))
-        url=url.replace('{-y}',str(2**tilematrix-1-til_y))
-        url=url.replace('{quadkey}',GEO.gtile_to_quadkey(til_x,til_y,tilematrix))
-        url=url.replace('{xcenter}',str((til_x+0.5)*provider.resolutions[tilematrix]*provider.tile_size+provider.top_left_corner[tilematrix][0]))
-        url=url.replace('{ycenter}',str(-1*(til_y+0.5)*provider.resolutions[tilematrix]*provider.tile_size+provider.top_left_corner[tilematrix][1]))
-        url=url.replace('{size}',str(int(provider.resolutions[tilematrix]*provider.tile_size)))
-        if '{switch:' in url:
-            (url_0,tmp)=url.split('{switch:')
-            (tmp,url_2)=tmp.split('}')
-            server_list=tmp.split(',')
-            url_1=random.choice(server_list).strip()
-            url=url_0+url_1+url_2 
-    elif provider.request_type=='wmts': # WMTS
-        url=provider.url_prefix+"&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER="+\
-            provider.layers+"&STYLE=&FORMAT=image/"+provider.image_type+"&TILEMATRIXSET="+provider.tilematrixset['identifier']+\
-            "&TILEMATRIX="+provider.tilematrixset['tilematrices'][tilematrix]['identifier']+"&TILEROW="+str(til_y)+"&TILECOL="+str(til_x)
-    elif provider.request_type=='local_tms':  # LOCAL TMS
-        url_local=provider.url_template.replace('{x}',str(5*til_x).zfill(4)) # ! Too much specific, needs to be changed by a x,y-> file_name lambda fct
-        url_local=url_local.replace('{y}',str(-5*til_y).zfill(4))
-        if os.path.isfile(url_local):
-            return (1,Image.open(url_local))
-        else:
-            UI.vprint(2,"! File ",url_local,"absent, using white texture instead !")
-            return (0,Image.new('RGB',(provider.tile_size,provider.tile_size),'white'))
-    if not request_headers:
-        if 'fake_headers' in provider:
-            request_headers=provider.fake_headers
-        else:
-            request_headers=request_headers_generic
-    width=height=provider.tile_size
-    (success,data)=http_request_to_image(url,request_headers,http_session)
-    if success and not down_sample: 
-        return (success,data) 
-    elif success and down_sample:
-        x0=(til_x_orig-2**down_sample*til_x)*width//(2**down_sample)
-        y0=(til_y_orig-2**down_sample*til_y)*height//(2**down_sample)
-        x1=x0+width//(2**down_sample)
-        y1=y0+height//(2**down_sample)
-        return (success,data.crop((x0,y0,x1,y1)).resize((width,height),Image.BICUBIC)) 
-    elif '[404]' in data:
-        if ('grid_type' not in provider) or (provider.grid_type!='webmercator'):
-            return (0,Image.new('RGB',(width,height),'white'))
-        til_x=til_x//2
-        til_y=til_y//2
-        tilematrix-=1
-        down_sample+=1 
-        if down_sample>=6:
-            return (0,Image.new('RGB',(width,height),'white'))
+        (url, request_headers) = URL.custom_wms_request(bbox, width, height, provider)
     else:
-        return (0,Image.new('RGB',(width,height),'white'))
-###############################################################################################################################
+        (minx, maxy, maxx, miny) = bbox
 
-###############################################################################################################################
-def get_and_paste_wms_part(bbox,width,height,provider,big_image,x0,y0,http_session):
-    (success,small_image)=get_wms_image(bbox,width,height,provider,http_session)
-    big_image.paste(small_image,(x0,y0))
+        if provider.wms_version.split('.')[1] == '3':
+            bbox_string = ','.join([str(miny), str(minx), str(maxy), str(maxx)])
+            _RS = 'CRS'
+        else:
+            bbox_string = ','.join([str(minx), str(miny), str(maxx), str(maxy)])
+            _RS = 'SRS'
+
+        url_template = 'SERVICE=WMS&VERSION={wms_ver}&FORMAT=image/{img_type}&REQUEST=GetMap&LAYERS={layers}' +\
+                       '&STYLES=&{rs}=EPSG:{epsg_code}&WIDTH={width}&HEIGHT={height}&BBOX={bbox}'
+        url = provider.url_prefix + url_template.\
+            format(wms_ver=provider.wms_version,
+                   img_type=provider.image_type,
+                   layers=provider.layers,
+                   rs=_RS,
+                   epsg_code=provider.epsg_code,
+                   width=width,
+                   height=height,
+                   bbox=bbox_string)
+
+    if not request_headers:
+        if provider.fake_headers:
+            request_headers = provider.fake_headers
+        else:
+            request_headers = request_headers_generic
+
+    (success, data) = http_request_to_image(url, request_headers, http_session)
+
+    if success:
+        return True, data
+    else:
+        return False, Image.new('RGB', (width, height), 'white')
+
+
+def get_wmts_image(tilematrix,
+                   til_x: int,
+                   til_y: int,
+                   provider: any,
+                   http_session: any) -> Tuple[bool, any]:
+    til_x_orig, til_y_orig = til_x, til_y
+    down_sample = 0
+    while True:
+        request_headers = None
+        if has_URL and provider.code in URL.custom_url_list:
+            (url, request_headers) = URL.custom_tms_request(tilematrix, til_x, til_y, provider)
+        elif provider.request_type == 'tms':  # TMS
+            url = provider.url_template.replace('{zoom}', str(tilematrix))
+            url = url.replace('{x}', str(til_x))
+            url = url.replace('{y}', str(til_y))
+            url = url.replace('{|y|}', str(abs(til_y) - 1))
+            url = url.replace('{-y}', str(2 ** tilematrix - 1 - til_y))
+            url = url.replace('{quadkey}', GEO.gtile_to_quadkey(til_x, til_y, tilematrix))
+            url = url.replace('{xcenter}', str((til_x + 0.5) * provider.resolutions[tilematrix] * provider.tile_size +
+                                               provider.top_left_corner[tilematrix][0]))
+            url = url.replace('{ycenter}', str(
+                -1 * (til_y + 0.5) * provider.resolutions[tilematrix] * provider.tile_size +
+                provider.top_left_corner[tilematrix][1]))
+            url = url.replace('{size}', str(int(provider.resolutions[tilematrix] * provider.tile_size)))
+            if '{switch:' in url:
+                (url_0, tmp) = url.split('{switch:')
+                (tmp, url_2) = tmp.split('}')
+                server_list = tmp.split(',')
+                url_1 = random.choice(server_list).strip()
+                url = url_0 + url_1 + url_2
+        elif provider.request_type == 'wmts':  # WMTS
+            url_template = '&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER={layer}&STYLE=' +\
+                           '&FORMAT=image/{image_type}&TILEMATRIXSET={tilematrixset_id}&TILEMATRIX={matrix_id}' +\
+                           '&TILEROW={row}&TILECOL={col}'
+            url = provider.url_prefix + url_template.\
+                format(layer=provider.layers,
+                       image_type=provider.image_type,
+                       tilematrixset_id=provider.tilematrixset['identifier'],
+                       matrix_id=provider.tilematrixset['tilematrices'][tilematrix]['identifier'],
+                       row=til_y,
+                       col=til_x)
+        elif provider.request_type == 'local_tms':  # LOCAL TMS
+            # ! Too much specific, needs to be changed by a x,y-> file_name lambda fct
+            url_local = provider.url_template.replace('{x}', str(5 * til_x).zfill(4))
+            url_local = url_local.replace('{y}', str(-5 * til_y).zfill(4))
+            if os.path.isfile(url_local):
+                return True, Image.open(url_local)
+            else:
+                UI.vprint(2, _('! File {url_local) absent, using white texture instead !').format(url_local=url_local))
+                return False, Image.new('RGB', (provider.tile_size, provider.tile_size), 'white')
+        if not request_headers:
+            if provider.fake_headers:
+                request_headers = provider.fake_headers
+            else:
+                request_headers = request_headers_generic
+        width = height = provider.tile_size
+        (success, data) = http_request_to_image(url, request_headers, http_session)
+        if success and not down_sample:
+            return success, data
+        elif success and down_sample:
+            x0 = (til_x_orig - 2 ** down_sample * til_x) * width // (2 ** down_sample)
+            y0 = (til_y_orig - 2 ** down_sample * til_y) * height // (2 ** down_sample)
+            x1 = x0 + width // (2 ** down_sample)
+            y1 = y0 + height // (2 ** down_sample)
+            return success, data.crop((x0, y0, x1, y1)).resize((width, height), Image.BICUBIC)
+        elif '[404]' in data:
+            if not provider.grid_type or provider.grid_type != 'webmercator':
+                return False, Image.new('RGB', (width, height), 'white')
+            til_x = til_x // 2
+            til_y = til_y // 2
+            tilematrix -= 1
+            down_sample += 1
+            if down_sample >= 6:
+                return False, Image.new('RGB', (width, height), 'white')
+        else:
+            return False, Image.new('RGB', (width, height), 'white')
+
+
+def get_and_paste_wms_part(bbox, width: int, height: int, provider, big_image, x0, y0, http_session) -> bool:
+    (success, small_image) = get_wms_image(bbox, width, height, provider, http_session)
+    big_image.paste(small_image, (x0, y0))
     return success
-###############################################################################################################################
 
-###############################################################################################################################
-def get_and_paste_wmts_part(tilematrix,til_x,til_y,provider,big_image,x0,y0,http_session,subt_size=None):
-    (success,small_image)=get_wmts_image(tilematrix,til_x,til_y,provider,http_session)
+
+def get_and_paste_wmts_part(tilematrix, til_x: int, til_y: int, provider, big_image, x0, y0, http_session, subt_size=None) -> bool:
+    (success, small_image) = get_wmts_image(tilematrix, til_x, til_y, provider, http_session)
     if not subt_size:
-        big_image.paste(small_image,(x0,y0))
+        big_image.paste(small_image, (x0, y0))
     else:
-        big_image.paste(small_image.resize(subt_size,Image.BICUBIC),(x0,y0))
+        big_image.paste(small_image.resize(subt_size, Image.BICUBIC), (x0, y0))
     return success
-###############################################################################################################################
 
-###############################################################################################################################
+
 def build_texture_from_tilbox(tilbox,zoomlevel,provider,progress=None):
     # less general than the next build_texture_from_bbox_and_size but probably slightly quicker
     (til_x_min,til_y_min,til_x_max,til_y_max)=tilbox
     parts_x=til_x_max-til_x_min
     parts_y=til_y_max-til_y_min
     width=height=provider.tile_size
-    big_image=Image.new('RGB',(width*parts_x,height*parts_y)) 
+    big_image=Image.new('RGB',(width*parts_x,height*parts_y))
     # we set-up the queue of downloads
     http_session=requests.Session() 
     download_queue=queue.Queue()
@@ -676,13 +705,8 @@ def build_texture_from_tilbox(tilbox,zoomlevel,provider,progress=None):
             y0=monty*height
             fargs=(zoomlevel,til_x_min+montx,til_y_min+monty,provider,big_image,x0,y0,http_session)
             download_queue.put(fargs)
-    # then the number of workers
-    if 'max_threads' in provider: 
-        max_threads=provider.max_threads
-    else:
-        max_threads=16
     # and finally activate them
-    success=parallel_execute(get_and_paste_wmts_part,download_queue,max_threads,progress)
+    success=parallel_execute(get_and_paste_wmts_part,download_queue,provider.max_threads,progress)
     # once out big_image has been filled and we return it
     return (success,big_image)
 ###############################################################################################################################
@@ -694,7 +718,7 @@ def build_texture_from_bbox_and_size(t_bbox,t_epsg,t_size,provider):
     warp_needed=crop_needed=False
     (ulx,uly,lrx,lry)=t_bbox
     (t_sizex,t_sizey)=t_size
-    if provider.epsg_code=='3857':
+    if provider.epsg_code==3857:
         s_ulx,s_uly,s_lrx,s_lry=ulx,uly,lrx,lry
     else:
         (s_ulx,s_uly)=GEO.transform(t_epsg,provider.epsg_code,ulx,uly)
@@ -769,15 +793,13 @@ def build_texture_from_bbox_and_size(t_bbox,t_epsg,t_size,provider):
             elif provider.request_type in ['wmts','tms','local_tms']:
                 fargs=[wmts_tilematrix,til_x_min+montx,til_y_min+monty,provider,big_image,x0,y0,http_session,subt_size]
             download_queue.put(fargs)
-    # We execute the downloads and subimage pastes
-    if 'max_threads' in provider: 
-        max_threads=provider.max_threads
-    else:
-        max_threads=16
+
+    # We execute the downloads and sub-image pastes
     if provider.request_type=='wms':
-        success=parallel_execute(get_and_paste_wms_part,download_queue,max_threads)
+        success=parallel_execute(get_and_paste_wms_part,download_queue,provider.max_threads)
     elif provider.request_type in ['wmts','tms','local_tms']:
-        success=parallel_execute(get_and_paste_wmts_part,download_queue,max_threads)
+        success=parallel_execute(get_and_paste_wmts_part,download_queue,provider.max_threads)
+
     # We modify big_image if necessary
     if warp_needed:
         UI.vprint(3,"Warp needed")
@@ -794,6 +816,7 @@ def build_texture_from_bbox_and_size(t_bbox,t_epsg,t_size,provider):
 def download_jpeg_ortho(file_dir,file_name,til_x_left,til_y_top,zoomlevel,provider_code,super_resol_factor=1):
     provider = providers_dict[provider_code]
 
+    # This isn't actually used in any current provider, only commented out in one.
     if hasattr(provider, 'super_resol_factor') and provider.super_resol_factor == 1:
         super_resol_factor = provider.super_resol_factor
 
@@ -840,19 +863,19 @@ def build_jpeg_ortho(tile, til_x_left,til_y_top,zoomlevel,provider_code,out_file
         for rlayer in local_combined_providers_dict[provider_code]:
             (y0,x0)=GEO.gtile_to_wgs84(til_x_left,til_y_top,zoomlevel)
             (y1,x1)=GEO.gtile_to_wgs84(til_x_left+16,til_y_top+16,zoomlevel)
-            if len(local_combined_providers_dict[provider_code])==1 or has_data((x0,y0,x1,y1),rlayer['extent_code'],is_mask_layer= (tile.lat,tile.lon, tile.mask_zl) if rlayer['priority']=='mask' else False):
+            if len(local_combined_providers_dict[provider_code])==1 or has_data((x0,y0,x1,y1),rlayer.extent_code,is_mask_layer= (tile.lat,tile.lon, tile.mask_zl) if rlayer.priority=='mask' else False):
                 data_found=True
                 true_til_x_left=til_x_left
                 true_til_y_top=til_y_top
                 true_zl=zoomlevel
-                max_zl=int(providers_dict[rlayer['layer_code']].max_zl)
+                max_zl=int(providers_dict[rlayer.layer_code].max_zl)
                 if max_zl<zoomlevel:
                     (latmed,lonmed)=GEO.gtile_to_wgs84(til_x_left+8,til_y_top+8,zoomlevel)
                     (true_til_x_left,true_til_y_top)=GEO.wgs84_to_orthogrid(latmed,lonmed,max_zl)
                     true_zl=max_zl
-                true_texture_attributes=(true_til_x_left,true_til_y_top,true_zl,rlayer['layer_code'])
-                true_file_name=FNAMES.jpeg_file_name_from_attributes(true_til_x_left, true_til_y_top, true_zl,rlayer['layer_code'])
-                true_file_dir=FNAMES.jpeg_file_dir_from_attributes(tile.lat, tile.lon,true_zl,providers_dict[rlayer['layer_code']])
+                true_texture_attributes=(true_til_x_left,true_til_y_top,true_zl,rlayer.layer_code)
+                true_file_name=FNAMES.jpeg_file_name_from_attributes(true_til_x_left, true_til_y_top, true_zl,rlayer.layer_code)
+                true_file_dir=FNAMES.jpeg_file_dir_from_attributes(tile.lat, tile.lon,true_zl,providers_dict[rlayer.layer_code])
                 if not os.path.isfile(os.path.join(true_file_dir,true_file_name)):
                     UI.vprint(1,"   Downloading missing orthophoto "+true_file_name+" (for combining in "+provider_code+")")
                     if not download_jpeg_ortho(true_file_dir,true_file_name,*true_texture_attributes):
@@ -907,7 +930,7 @@ def build_combined_ortho(tile, latp,lonp,zoomlevel,provider_code,mask_zl,filenam
     (y1,x1)=GEO.gtile_to_wgs84(til_x_left+16,til_y_top+16,zoomlevel)
     mask_weight_below=numpy.zeros((4096,4096),dtype=numpy.uint16)
     for rlayer in combined_providers_dict[provider_code][::-1]:
-        mask=has_data((x0,y0,x1,y1),rlayer['extent_code'],return_mask=True,is_mask_layer=(tile.lat,tile.lon, tile.mask_zl) if rlayer['priority']=='mask' else False)
+        mask=has_data((x0,y0,x1,y1),rlayer.extent_code,return_mask=True,is_mask_layer=(tile.lat,tile.lon, tile.mask_zl) if rlayer.priority=='mask' else False)
         if not mask: continue
         # we turn the image mask into an array 
         mask=numpy.array(mask,dtype=numpy.uint16)
@@ -915,7 +938,7 @@ def build_combined_ortho(tile, latp,lonp,zoomlevel,provider_code,mask_zl,filenam
         true_til_y_top=til_y_top
         true_zl=zoomlevel
         crop=False
-        max_zl=int(providers_dict[rlayer['layer_code']].max_zl)
+        max_zl=int(providers_dict[rlayer.layer_code].max_zl)
         if max_zl<zoomlevel:
             (latmed,lonmed)=GEO.gtile_to_wgs84(til_x_left+8,til_y_top+8,zoomlevel)
             (true_til_x_left,true_til_y_top)=GEO.wgs84_to_orthogrid(latmed,lonmed,max_zl)
@@ -925,17 +948,17 @@ def build_combined_ortho(tile, latp,lonp,zoomlevel,provider_code,mask_zl,filenam
             pixy0=round(256*(til_y_top*2**(max_zl-zoomlevel)-true_til_y_top))
             pixx1=round(pixx0+2**(12-zoomlevel+max_zl))
             pixy1=round(pixy0+2**(12-zoomlevel+max_zl))
-        true_file_name=FNAMES.jpeg_file_name_from_attributes(true_til_x_left, true_til_y_top, true_zl,rlayer['layer_code'])
-        true_file_dir=FNAMES.jpeg_file_dir_from_attributes(tile.lat, tile.lon, true_zl,providers_dict[rlayer['layer_code']])
+        true_file_name=FNAMES.jpeg_file_name_from_attributes(true_til_x_left, true_til_y_top, true_zl,rlayer.layer_code)
+        true_file_dir=FNAMES.jpeg_file_dir_from_attributes(tile.lat, tile.lon, true_zl,providers_dict[rlayer.layer_code])
         if not os.path.isfile(os.path.join(true_file_dir,true_file_name)):
             UI.vprint(1,"   Downloading missing orthophoto "+true_file_name+" (for combining in "+provider_code+")\n")
-            download_jpeg_ortho(true_file_dir,true_file_name,true_til_x_left, true_til_y_top, true_zl,rlayer['layer_code'])
+            download_jpeg_ortho(true_file_dir,true_file_name,true_til_x_left, true_til_y_top, true_zl,rlayer.layer_code)
         else:
             UI.vprint(1,"   The orthophoto "+true_file_name+" (for combining in "+provider_code+") is already present.\n")
         true_im=Image.open(os.path.join(true_file_dir,true_file_name))
         UI.vprint(2,"Imprinting for provider",rlayer,til_x_left,til_y_top) 
-        true_im=color_transform(true_im,rlayer['color_code'])  
-        if rlayer['priority']=='mask' and tile.sea_texture_blur:
+        true_im=color_transform(true_im,rlayer.color_code)
+        if rlayer.priority=='mask' and tile.sea_texture_blur:
             UI.vprint(2,"Blur of a mask !")
             true_im=true_im.filter(ImageFilter.GaussianBlur(tile.sea_texture_blur*2**(true_zl-17)))
         if crop: 
@@ -946,13 +969,13 @@ def build_combined_ortho(tile, latp,lonp,zoomlevel,provider_code,mask_zl,filenam
         # true_arr=numpy.array(true_im).astype(numpy.uint16)
         # mask[(numpy.sum(true_arr,axis=2)>=715)*(mask>=1)*(mask<=253)]=0
         # mask[(numpy.sum(true_arr,axis=2)<=15)*(mask>=1)*(mask<=253)]=0
-        if rlayer['priority']=='low':
+        if rlayer.priority=='low':
             # low priority layers, do not increase mask_weight_below
             wasnt_zero=(mask_weight_below+mask)!=0
             mask[wasnt_zero]=255*mask[wasnt_zero]/(mask_weight_below+mask)[wasnt_zero]
-        elif rlayer['priority'] in ['high','mask']:
+        elif rlayer.priority in ['high','mask']:
             mask_weight_below+=mask
-        elif rlayer['priority']=='medium':
+        elif rlayer.priority=='medium':
             not_zero=mask!=0
             mask_weight_below+=mask
             mask[not_zero]=255*mask[not_zero]/mask_weight_below[not_zero]
@@ -1132,7 +1155,7 @@ def combine_textures(tile,til_x_left,til_y_top,zoomlevel,provider_code):
         true_til_y_top=til_y_top
         true_zl=zoomlevel
         crop=False
-        max_zl=int(providers_dict[rlayer['layer_code']].max_zl)
+        max_zl=int(providers_dict[rlayer.layer_code].max_zl)
         if max_zl<zoomlevel:
             (latmed,lonmed)=GEO.gtile_to_wgs84(til_x_left+8,til_y_top+8,zoomlevel)
             (true_til_x_left,true_til_y_top)=GEO.wgs84_to_orthogrid(latmed,lonmed,max_zl)
@@ -1142,12 +1165,12 @@ def combine_textures(tile,til_x_left,til_y_top,zoomlevel,provider_code):
             pixy0=round(256*(til_y_top*2**(max_zl-zoomlevel)-true_til_y_top))
             pixx1=round(pixx0+2**(12-zoomlevel+max_zl))
             pixy1=round(pixy0+2**(12-zoomlevel+max_zl))
-        true_file_name=FNAMES.jpeg_file_name_from_attributes(true_til_x_left, true_til_y_top, true_zl,rlayer['layer_code'])
-        true_file_dir=FNAMES.jpeg_file_dir_from_attributes(tile.lat, tile.lon, true_zl,providers_dict[rlayer['layer_code']])
+        true_file_name=FNAMES.jpeg_file_name_from_attributes(true_til_x_left, true_til_y_top, true_zl,rlayer.layer_code)
+        true_file_dir=FNAMES.jpeg_file_dir_from_attributes(tile.lat, tile.lon, true_zl,providers_dict[rlayer.layer_code])
         true_im=Image.open(os.path.join(true_file_dir,true_file_name))
         UI.vprint(2,"Imprinting for provider",rlayer,til_x_left,til_y_top) 
-        true_im=color_transform(true_im,rlayer['color_code'])  
-        if rlayer['priority']=='mask' and tile.sea_texture_blur:
+        true_im=color_transform(true_im,rlayer.color_code)
+        if rlayer.priority=='mask' and tile.sea_texture_blur:
             UI.vprint(2,"Blur of a mask !")
             true_im=true_im.filter(ImageFilter.GaussianBlur(tile.sea_texture_blur*2**(true_zl-17)))
         if crop: 
@@ -1156,7 +1179,7 @@ def combine_textures(tile,til_x_left,til_y_top,zoomlevel,provider_code):
         return true_im
     # the real situation now where there are more than one layer with data
     for rlayer in local_combined_providers_dict[provider_code][::-1]:
-        mask=has_data((x0,y0,x1,y1),rlayer['extent_code'],return_mask=True,is_mask_layer=(tile.lat,tile.lon, tile.mask_zl) if rlayer['priority']=='mask' else False)
+        mask=has_data((x0,y0,x1,y1),rlayer.extent_code,return_mask=True,is_mask_layer=(tile.lat,tile.lon, tile.mask_zl) if rlayer.priority=='mask' else False)
         if not mask: continue
         # we turn the image mask into an array 
         mask=numpy.array(mask,dtype=numpy.uint16)
@@ -1164,7 +1187,7 @@ def combine_textures(tile,til_x_left,til_y_top,zoomlevel,provider_code):
         true_til_y_top=til_y_top
         true_zl=zoomlevel
         crop=False
-        max_zl=int(providers_dict[rlayer['layer_code']].max_zl)
+        max_zl=int(providers_dict[rlayer.layer_code].max_zl)
         if max_zl<zoomlevel:
             (latmed,lonmed)=GEO.gtile_to_wgs84(til_x_left+8,til_y_top+8,zoomlevel)
             (true_til_x_left,true_til_y_top)=GEO.wgs84_to_orthogrid(latmed,lonmed,max_zl)
@@ -1174,12 +1197,12 @@ def combine_textures(tile,til_x_left,til_y_top,zoomlevel,provider_code):
             pixy0=round(256*(til_y_top*2**(max_zl-zoomlevel)-true_til_y_top))
             pixx1=round(pixx0+2**(12-zoomlevel+max_zl))
             pixy1=round(pixy0+2**(12-zoomlevel+max_zl))
-        true_file_name=FNAMES.jpeg_file_name_from_attributes(true_til_x_left, true_til_y_top, true_zl,rlayer['layer_code'])
-        true_file_dir=FNAMES.jpeg_file_dir_from_attributes(tile.lat, tile.lon, true_zl,providers_dict[rlayer['layer_code']])
+        true_file_name=FNAMES.jpeg_file_name_from_attributes(true_til_x_left, true_til_y_top, true_zl,rlayer.layer_code)
+        true_file_dir=FNAMES.jpeg_file_dir_from_attributes(tile.lat, tile.lon, true_zl,providers_dict[rlayer.layer_code])
         true_im=Image.open(os.path.join(true_file_dir,true_file_name))
         UI.vprint(2,"Imprinting for provider",rlayer,til_x_left,til_y_top) 
-        true_im=color_transform(true_im,rlayer['color_code'])  
-        if rlayer['priority']=='mask' and tile.sea_texture_blur:
+        true_im=color_transform(true_im,rlayer.color_code)
+        if rlayer.priority=='mask' and tile.sea_texture_blur:
             UI.vprint(2,"Blur of a mask !")
             true_im=true_im.filter(ImageFilter.GaussianBlur(tile.sea_texture_blur*2**(true_zl-17)))
         if crop: 
@@ -1190,13 +1213,13 @@ def combine_textures(tile,til_x_left,til_y_top,zoomlevel,provider_code):
         true_arr=numpy.array(true_im).astype(numpy.uint16)
         mask[(numpy.sum(true_arr,axis=2)>=735)*(mask>=1)*(mask<=253)]=0
         mask[(numpy.sum(true_arr,axis=2)<=35)*(mask>=1)*(mask<=253)]=0
-        if rlayer['priority']=='low':
+        if rlayer.priority=='low':
             # low priority layers, do not increase mask_weight_below
             wasnt_zero=(mask_weight_below+mask)!=0
             mask[wasnt_zero]=255*mask[wasnt_zero]/(mask_weight_below+mask)[wasnt_zero]
-        elif rlayer['priority'] in ['high','mask']:
+        elif rlayer.priority in ['high','mask']:
             mask_weight_below+=mask
-        elif rlayer['priority']=='medium':
+        elif rlayer.priority=='medium':
             not_zero=mask!=0
             mask_weight_below+=mask
             mask[not_zero]=255*mask[not_zero]/mask_weight_below[not_zero]

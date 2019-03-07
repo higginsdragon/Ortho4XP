@@ -81,7 +81,7 @@ class ImageProvider:
         self.top_left_corner = None
         self.resolutions = None
         self.tilematrixset = None
-        self.max_threads = 8
+        self.max_threads = 16
         self.request_headers = REQUEST_HEADERS_GENERIC
         self.fake_headers = None
         self.wms_version = None

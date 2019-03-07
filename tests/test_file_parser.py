@@ -33,7 +33,7 @@ class TestImageProvider(unittest.TestCase):
         self.assertIsNone(provider.top_left_corner)
         self.assertEqual(None, provider.resolutions)
         self.assertEqual(None, provider.tilematrixset)
-        self.assertEqual(8, provider.max_threads)
+        self.assertEqual(16, provider.max_threads)
         self.assertEqual({'User-Agent': "Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0",
                           'Accept': '*/*',
                           'Connection': 'keep-alive',
