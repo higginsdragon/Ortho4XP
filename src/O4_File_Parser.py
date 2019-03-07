@@ -88,6 +88,8 @@ class ImageProvider:
         self.wmts_version = None
         self.wms_size = self.tile_size
         self.layers = ''
+        self.has_custom_url = False
+        self.custom_url_module = ''
 
         self.url_prefix = ''
         self.url_template = ''
@@ -108,7 +110,7 @@ class ImageProvider:
 
         user_agent_generic = USER_AGENT_GENERIC  # compatibility with existing files for eval statements below
         file_dir = os.path.split(file_path)[0]
-        self.code = os.path.split(file_path)[1].split('.')[0]
+        self.code = str(os.path.split(file_path)[1].split('.')[0])
         self.directory = os.path.split(file_dir)[1]
         valid_keys = list(vars(self).keys())
 
@@ -155,7 +157,12 @@ class ImageProvider:
             self.url = self.url_prefix
         if self.url_template:
             self.url = self.url_template
-        if not self.url:  # TODO: Add support for custom URLs
+
+        self.custom_url_module = self.code + '_Custom_URL'
+        if os.path.isfile(os.path.join(file_dir, self.custom_url_module + '.py')):
+            self.has_custom_url = True
+
+        if not self.url and not self.has_custom_url:
             print(error_reading_text.format(var='url', provider_code=self.code))
             return False
 
@@ -245,7 +252,12 @@ class ImageProvider:
             self.top_left_corner =\
                 [[float(x) for x in y['TopLeftCorner'].split()] for y in self.tilematrixset['tilematrices']]
 
-            units_per_pix = 0.00028 if self.epsg_code not in ['4326'] else 2.5152827955e-09
+        if self.scaledenominator is not None:
+            if self.epsg_code not in [4326]:
+                units_per_pix = 0.00028
+            else:
+                units_per_pix = 2.5152827955e-09
+
             self.resolutions = units_per_pix * self.scaledenominator
 
         if self.grid_type == 'webmercator':

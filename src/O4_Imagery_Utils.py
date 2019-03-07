@@ -1,6 +1,7 @@
 import time 
 import os
 import sys
+import importlib.machinery
 import glob
 import subprocess
 import io
@@ -14,18 +15,6 @@ import O4_UI_Utils as UI
 import O4_Geo_Utils as GEO
 import O4_File_Names as FNAMES
 import O4_File_Parser as O4Parser
-try:
-    import O4_Custom_URL as URL
-    has_URL=True
-except:
-    try:
-        # module loaded from a subdirectory of Extent for extent creation
-        sys.path.append(os.path.join('../../Providers'))
-        import O4_Custom_URL as URL
-        has_URL=True
-    except:
-        print("ERROR: Providers/O4_Custom_URL.py contains invalid code. The corresponding providers won't probably work.")
-        has_URL=False
 import O4_Vector_Utils as VECT
 import O4_Mesh_Utils as MESH
 import O4_OSM_Utils as OSM
@@ -558,8 +547,12 @@ def get_wms_image(bbox: tuple,
                   http_session: any) -> Tuple[bool, any]:
     request_headers = None
 
-    if has_URL and provider.code in URL.custom_url_list:
-        (url, request_headers) = URL.custom_wms_request(bbox, width, height, provider)
+    # If the provider has a _Custom_URL.py file associated with it, dynamically load it as a module.
+    if provider.has_custom_url:
+        module_path = os.path.join(FNAMES.Provider_dir, provider.directory, provider.custom_url_module + '.py')
+        custom_url_module = importlib.machinery.SourceFileLoader(provider.custom_url_module, module_path).load_module()
+        (url, request_headers) =\
+            custom_url_module.custom_request(bbox=bbox, width=width, height=height)
     else:
         (minx, maxy, maxx, miny) = bbox
 
@@ -605,8 +598,13 @@ def get_wmts_image(tilematrix,
     down_sample = 0
     while True:
         request_headers = None
-        if has_URL and provider.code in URL.custom_url_list:
-            (url, request_headers) = URL.custom_tms_request(tilematrix, til_x, til_y, provider)
+        # If the provider has a _Custom_URL.py file associated with it, dynamically load it as a module.
+        if provider.has_custom_url:
+            module_path = os.path.join(FNAMES.Provider_dir, provider.directory, provider.custom_url_module + '.py')
+            custom_url_module =\
+                importlib.machinery.SourceFileLoader(provider.custom_url_module, module_path).load_module()
+            (url, request_headers) = \
+                custom_url_module.custom_request(tilematrix=tilematrix, til_x=til_x, til_y=til_y)
         elif provider.request_type == 'tms':  # TMS
             url = provider.url_template.replace('{zoom}', str(tilematrix))
             url = url.replace('{x}', str(til_x))

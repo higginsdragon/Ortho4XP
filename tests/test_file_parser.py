@@ -1,7 +1,7 @@
 import unittest
 import unittest.mock as mock
 import os
-
+import numpy
 import O4_Test
 import O4_File_Parser as O4Parser
 import xml.etree.ElementTree as ET
@@ -54,6 +54,7 @@ class TestImageProvider(unittest.TestCase):
         self.assertEqual('Test', provider.directory)
         self.assertEqual('wms', provider.request_type)
         self.assertEqual('http://mapy.geoportal.gov.pl/wss/service/img/guest/ORTO/MapServer/WMSServer?', provider.url)
+        self.assertFalse(provider.has_custom_url)
         self.assertEqual('Raster', provider.layers)
         self.assertEqual(None, provider.tilematrixset)
         self.assertTrue(provider.in_gui)
@@ -76,6 +77,35 @@ class TestImageProvider(unittest.TestCase):
         result = provider.parse_from_file(lay_file)
 
         self.assertFalse(result)
+
+    def test_image_provider_parse_from_file_custom_url(self):
+        lay_file = os.path.join(MOCKS_DIR, 'Providers/Norway/NIB.lay')
+        provider = O4Parser.ImageProvider()
+        result = provider.parse_from_file(lay_file)
+
+        self.assertTrue(result)
+        self.assertTrue(provider.has_custom_url)
+
+    def test_image_provider_parse_from_file_scaledenominator(self):
+        lay_file = os.path.join(MOCKS_DIR, 'Providers/Norway/NIB.lay')
+        provider = O4Parser.ImageProvider()
+        result = provider.parse_from_file(lay_file)
+
+        resolutions_array = numpy.array([
+         21663.999999997272, 10831.999999998636, 5415.9999999993179,
+         2707.9999999996589, 1353.9999999998295, 676.99999999991473,
+         338.49999999995737, 169.24999999997868, 84.624999999989342,
+         42.312499999994671, 21.156249999997335, 10.578124999998668,
+         5.2890624999993339, 2.6445312499996669, 1.3222656249998335,
+         0.66113281249991673, 0.33056640624995837, 0.16528320312497918
+        ])
+
+        self.assertTrue(result)
+        self.assertEqual(18, len(provider.resolutions))
+        self.assertEqual(resolutions_array[0], provider.resolutions[0])
+        self.assertEqual(resolutions_array[5], provider.resolutions[5])
+        self.assertEqual(resolutions_array[10], provider.resolutions[10])
+        self.assertEqual(resolutions_array[15], provider.resolutions[15])
 
     def test_read_tile_matrix_sets_from_file(self):
         lay_file = os.path.join(MOCKS_DIR, 'Providers/Netherlands/PDOK15.lay')
