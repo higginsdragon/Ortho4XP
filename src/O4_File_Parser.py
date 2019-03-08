@@ -562,6 +562,10 @@ class ColorFilter:
         return True
 
 
+FILE_NOT_FOUND_TEXT = _('File not found; {file_path}')
+FILE_ERROR_TEXT = _('Could not open {file_path} for reading.')
+
+
 def read_xml_file(file_path: str) -> Union[ET.Element, bool]:
     """
     A helper function to read XML files and return the parsed contents.
@@ -575,10 +579,10 @@ def read_xml_file(file_path: str) -> Union[ET.Element, bool]:
     try:
         xfile = open(file_path, 'r', encoding='utf-8')
     except FileNotFoundError:
-        print(_('File not found; {file_path}').format(file_path=file_path))
+        print(FILE_NOT_FOUND_TEXT.format(file_path=file_path))
         return False
     except OSError:
-        print(_('Could not open {file_path} for reading.').format(file_path=file_path))
+        print(FILE_ERROR_TEXT.format(file_path=file_path))
         return False
 
     xml_raw = xfile.read()
@@ -591,3 +595,69 @@ def read_xml_file(file_path: str) -> Union[ET.Element, bool]:
         return False
 
     return xml_parsed
+
+
+def read_yaml_file(file_path: str) -> dict:
+    """
+    Parses YAML files and returns the resulting dictionary.
+
+    Params:
+        file_path (str): The full file path to the YAML file
+
+    Returns:
+        dict: dict of the parsed data, or empty if unsuccessful
+    """
+
+    # This currently does the process manually instead of using PyYAML because I currently want
+    # to avoid adding extra necessary modules. However, in the future it just takes changing
+    # this function to do it with a new method. -Higgins
+    yaml_dict = {}
+
+    try:
+        file = open(file_path, 'r')
+    except FileNotFoundError:
+        print(FILE_NOT_FOUND_TEXT.format(file_path=file_path))
+        return yaml_dict
+    except OSError:
+        print(FILE_ERROR_TEXT.format(file_path=file_path))
+        return yaml_dict
+
+    # THIS IS SUPER JANKY AND NOT A PROPER YAML PARSER. Only does OSM_Sources currently and only 2 levels deep.
+    # REPLACE WITH A PROPER YAML PARSER ONCE APPROVED
+    lines = file.readlines()
+    file.close()
+    keys = {}
+    for line in lines:
+        if line[0] == '#':
+            continue
+        if not line:
+            continue
+
+        spaces = len(line) - len(line.lstrip())
+        if spaces == 0:
+            indent = 0
+        else:
+            indent = int(spaces / 2)
+
+        if indent == 0:
+            keys[0] = line.split(':')[0]
+            yaml_dict[keys[0]] = {}
+            continue
+
+        split_line = line.split(':')
+        key = split_line[0].strip()
+        value = ':'.join(split_line[1:]).strip()
+
+        if not value:
+            keys[indent] = key
+            if indent == 1:
+                yaml_dict[keys[indent - 1]][key] = {}
+            elif indent == 2:
+                yaml_dict[keys[indent - 2]][keys[indent - 1]][key] = {}
+        else:
+            if indent == 1:
+                yaml_dict[keys[indent - 1]][key] = value
+            elif indent == 2:
+                yaml_dict[keys[indent - 2]][keys[indent - 1]][key] = value
+
+    return yaml_dict

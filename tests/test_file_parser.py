@@ -263,6 +263,18 @@ class TestFileParser(unittest.TestCase):
 
         self.assertEqual(ET.Element, type(result))
 
+    def test_read_yaml_file(self):
+        file_path = os.path.join(MOCKS_DIR, 'Providers/OSM_Sources.yaml')
+        result = O4Parser.read_yaml_file(file_path)
+
+        self.assertTrue(isinstance(result, dict))
+        self.assertEqual(2, len(result))
+        self.assertEqual(4, len(result['overpass']))
+        self.assertTrue('DE' in result['overpass'])
+        self.assertTrue(isinstance(result['overpass']['DE']['url'], str))
+        self.assertEqual(1, len(result['osm']))
+        self.assertEqual('http://api.example.none/', result['osm']['example']['url'])
+
 
 if __name__ == '__main__':
     unittest.main()

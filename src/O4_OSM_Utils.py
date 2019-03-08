@@ -7,15 +7,12 @@ import numpy
 from shapely import geometry, ops
 import O4_UI_Utils as UI
 import O4_File_Names as FNAMES
+import O4_File_Parser as O4Parser
 import xml.etree.ElementTree as ET
 
-overpass_servers={
-        "DE": "http://overpass-api.de/api/interpreter",
-        "FR": "http://api.openstreetmap.fr/oapi/interpreter",
-        "KU": "https://overpass.kumi.systems/api/interpreter",
-        "RU": "http://overpass.osm.rambler.ru/cgi/interpreter"
-        }
-overpass_server_choice = "DE"
+overpass_servers = {}
+"""This holds all the overpass servers, which is filled when get_overpass_data is called for the first time."""
+overpass_server_choice = 'DE'
 max_osm_tentatives = 8
 
 
@@ -466,6 +463,11 @@ def get_overpass_data(query, bbox, server_code=None):
     :param server_code: The server code to use, or 'random'
     :return: request content or 0/False
     """
+    global overpass_servers
+    # If overpass servers aren't set, set them now.
+    if not overpass_servers:
+        overpass_servers = overpass_servers_dict()
+
     tentative = 1
     server_keys = overpass_servers.keys()
     true_server_code = overpass_server_choice  # defining this here in case a bad server code is passed in
@@ -527,6 +529,23 @@ def get_overpass_data(query, bbox, server_code=None):
         tentative += 1
 
     return r.content
+
+
+def overpass_servers_dict():
+    """
+    Return a dictionary of overpass servers in the method currently expected from Ortho4XP.
+
+    Returns:
+        dict: overpass server codes and urls, e.g. {'DE': 'http://overpass.url'}
+    """
+    file_path = os.path.join(FNAMES.Provider_dir, 'OSM_Sources.yaml')
+    yaml_dict = O4Parser.read_yaml_file(file_path)
+    overpass = yaml_dict['overpass']
+    parsed_dict = {}
+    for code in overpass:
+        parsed_dict[code] = overpass[code]['url']
+
+    return parsed_dict
 
 
 def OSM_to_MultiLineString(osm_layer,lat,lon,tags_for_exclusion=set(),filter=None):
@@ -632,5 +651,3 @@ def OSM_to_MultiPolygon(osm_layer,lat,lon,filter=None):
         UI.vprint(2,"    Total number of geometries:",len(ret_val.geoms))
     UI.progress_bar(1,100)
     return ret_val
-##############################################################################
-

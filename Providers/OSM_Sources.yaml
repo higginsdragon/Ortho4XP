@@ -1,0 +1,15 @@
+# OSM servers to be used in Ortho4XP.
+# This allows specific or personal servers to be used, and new info to be added such as extent, etc.
+overpass:
+  DE:
+    url: http://overpass-api.de/api/interpreter
+  FR:
+    url: http://api.openstreetmap.fr/oapi/interpreter
+  KU:
+    url: https://overpass.kumi.systems/api/interpreter
+  RU:
+    url: http://overpass.osm.rambler.ru/cgi/interpreter
+osm:
+  example:
+    description: Example, not to be used. Here for future use.
+    url: http://api.example.none/
