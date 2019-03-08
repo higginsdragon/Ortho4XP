@@ -457,7 +457,7 @@ def build_dsf(tile,download_queue):
                 textured_tris[0]['cross-pool'].extend(tri_p)
         # II. Low resolution texture with global coverage        
         if ((tile.experimental_water & 2) or tile.add_low_res_sea_ovl): # experimental water over sea
-            #sea_zl=int(IMG.providers_dict['SEA']['max_zl'])
+            #sea_zl=int(IMG.providers_dict['SEA'].max_zl)
             sea_zl=experimental_water_zl
             (til_x_left,til_y_top)=GEO.wgs84_to_orthogrid(bary_lat,bary_lon,sea_zl)
             texture_attributes=(til_x_left,til_y_top,sea_zl,'SEA')

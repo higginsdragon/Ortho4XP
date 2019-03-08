@@ -1,0 +1,10 @@
+request_type=wms
+wms_size=512
+epsg_code=3857
+bad_key=wrong
+wms_version=1.1.1
+url_prefix=http://mapy.geoportal.gov.pl/wss/service/img/guest/ORTO/MapServer/WMSServer?
+fake_headers={'User-Agent':user_agent_generic,'Accept':'*/*','Connection':'keep-alive','Accept-Encoding':'gzip, deflate, br','Referer':'https://map.geo.admin.ch','Origin':'https://map.geo.admin.ch'}
+layers=Raster
+imagery_dir=grouped
+in_GUI=False

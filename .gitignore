@@ -1,11 +1,12 @@
 *.log
-.idea
+.idea/
 .last_gui_params.txt
 __pycache__
 _trial_temp
 Ortho4XP.cfg
 Ortho4XP.cfg.bak
 Elevation_data/
+Extents/Auto/
 Geotiffs/
 Masks/
 OSM_data/

@@ -631,5 +631,15 @@ class TestGetOverpassData(unittest.TestCase):
         self.assertFalse(raw_xml)
 
 
+class TestOsmUtils(unittest.TestCase):
+
+    def test_overpass_servers_dict(self):
+        overpass_servers = OSM.overpass_servers_dict()
+
+        self.assertEqual(4, len(overpass_servers))
+        self.assertTrue('FR' in overpass_servers)
+        self.assertEqual('http://overpass-api.de/api/interpreter', overpass_servers['DE'])
+
+
 if __name__ == '__main__':
     unittest.main()
